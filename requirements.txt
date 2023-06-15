@@ -1,0 +1,13 @@
+streamlit
+streamlit_book
+matplotlib
+numpy
+streamlit_chat
+openai
+pandas
+requests
+json
+urllib
+os
+geopy
+langchain
