@@ -5,6 +5,5 @@ numpy
 streamlit_chat
 openai
 pandas
-os
 geopy
 langchain
