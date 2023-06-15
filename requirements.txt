@@ -6,7 +6,6 @@ streamlit_chat
 openai
 pandas
 requests
-json
 urllib
 os
 geopy
