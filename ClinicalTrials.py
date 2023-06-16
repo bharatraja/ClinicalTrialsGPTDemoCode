@@ -11,6 +11,7 @@ import pandas as pd
 from langchain.chat_models import AzureChatOpenAI
 from langchain.schema import HumanMessage
 from langchain.agents import create_pandas_dataframe_agent
+from tenacity import retry, wait_random_exponential, stop_after_attempt  
 
 DEBUG=True
 
@@ -21,6 +22,22 @@ st.set_page_config(page_title="Clinical Trials Companion",  page_icon=":bar_char
  #Do some optimization so we are not querying all the time
  #remove @st.cache_data from findGeocode
 #endregion
+
+def camel_case_split(str):
+    #first word will 
+    words = [[str[0].upper()]]
+
+ 
+    for c in str[1:]:
+        if words[-1][-1].islower() and c.isupper():
+            words.append(list(c))
+        else:
+            words[-1].append(c)
+ 
+    words= [''.join(word) for word in words]
+    return ' '.join(words)
+
+
 
 @st.cache_resource
 def getChatModel():
@@ -247,6 +264,12 @@ class Trials:
     if self.totalCount!=0:
         df = pd.DataFrame([t.__dict__ for t in self.studies ])
         df.drop(['raw'],axis=1,inplace=True)
+
+        #write meaningful column names
+        df.columns=[camel_case_split(str(n)) for n in df.columns]
+        
+        
+
         return df
     else:
         return None
@@ -274,16 +297,21 @@ def generate_message_prompt():
               Here is how to use the different columns to understand data:
               nctid also know as study id the unique identification code given to each clinical study upon registration at ClinicalTrials.gov. The format is NCT followed by an 8-digit number. Also known as ClinicalTrials.gov Identifier
               Each row is a seperate study with a unique Study ID OR nctid.
-              briefTitle is Brief Title and provides a brief title of the study. A short title of the clinical study written in language intended for the lay public. The title should include, where possible, information on the participants, condition being evaluated, and intervention(s) studied.
-              leadSponsor is the Lead Sponsor (like a Pharma company) for the study. The organization or person who initiates the study and who has authority and control over the study.
-              briefSummary is a brief summary of the what the study aims to achieve
-              interventionName lists out all the interventions or treatment in the study like a placebo or an actual ingredient. Arm/Group and Intervention Cross Reference
-              locationFacility is the Location Facility of a Hospital where the study is conducted
-              locationCity is the Location City of where the facility is
-              primaryOutcomeMeasure is the Primary Outcomes that are measured in the study to see if the intervention tested has any effect
+              Brief Title  provides a brief title of the study. A short title of the clinical study written in language intended for the lay public. The title should include, where possible, information on the participants, condition being evaluated, and intervention(s) studied.
+              Lead Sponsor (like a Pharma company) for the study. The organization or person who initiates the study and who has authority and control over the study.
+              Brief summary is a smummary of the what the study aims to achieve
+              Intervention Name lists out all the interventions or treatment in the study like a placebo or an actual ingredient. Arm/Group and Intervention Cross Reference
+              Location Facility is the Location Facility of a Hospital where the study is conducted
+              Location City is the City of where the facility is
+              Primary Outcome Measure is the Primary Outcomes that are measured in the study to see if the intervention tested has any effect
               Similary with other columns. If you dont know any answer say you dont know and point to https://clinicaltrials.gov for information"""}
                 ]
 
+@retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(3))
+def generate_query_output(user_input=""):
+    if user_input != "":
+         if st.session_state['agent'] is not None:
+             return st.session_state['agent'].run(user_input) 
 
 #region Initialise session state variables
 if 'refreshData' not in st.session_state:
@@ -347,6 +375,8 @@ if search or st.session_state['refreshData']:
     trials=Trials(TrialsQuery(condition, treatment, location, studyStatus))
     trials.getStudies()
 
+ 
+
     #st.write("Getting fresh data")
     #write info in session state
     st.session_state['df']=trials.getStudiesAsDF()
@@ -389,10 +419,14 @@ if not st.session_state['df'] is None:
 
 
             if (submit_button or st.session_state['refreshChat']) and user_input:
-                try:
-                    output=st.session_state['agent'].run(user_input)
-                except:
-                    output="Sorry I dont know the answer to that"
+                with response_container:
+                    with st.spinner('GPT Getting answers for you...'):
+                        try:
+                            #output=st.session_state['agent'].run(user_input)
+                            output=generate_query_output(user_input)
+                        except:
+                            #st.write()
+                            output="Sorry I dont know the answer to that"
 
                 st.session_state['past'].append(user_input)
                 st.session_state['generated'].append(output)
