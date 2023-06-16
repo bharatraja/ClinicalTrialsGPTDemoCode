@@ -101,7 +101,7 @@ class TrialsQuery:
 
         #need to urlencode
         if fields is None:
-            fields="NCTId,BriefTitle,LeadSponsorName,LocationCity,LocationFacility,InterventionName,PrimaryOutcomeMeasure,BriefSummary" #cannot have spaces
+            fields="NCTId,BriefTitle,LeadSponsorName,LocationCity,LocationFacility,InterventionName,PrimaryOutcomeMeasure,BriefSummary,OverallStatus,Phase,EligibilityCriteria,Sex" #cannot have spaces
 
         query=( self.api_base + self.api_studies + "?" +
               f"query.cond={self.condition}&" +
@@ -143,6 +143,10 @@ class Study:
    briefSummary=""
    locationCity=""
    locationFacility=""
+   status=""
+   phases=""
+   eligibilityCriteria=""
+   sex=""
 
 
    def collate(self, arr=[],key=""):
@@ -181,6 +185,14 @@ class Study:
                self.briefTitle=raw['protocolSection']['identificationModule']['briefTitle']
                self.leadSponsor=raw['protocolSection']['sponsorCollaboratorsModule']['leadSponsor']['name']
                self.briefSummary=raw['protocolSection']['descriptionModule']['briefSummary']
+               self.status=raw['protocolSection']['statusModule']['overallStatus']
+               self.eligibilityCriteria=raw['protocolSection']['eligibilityModule']['eligibilityCriteria']
+               self.sex=raw['protocolSection']['eligibilityModule']['sex']
+               try:
+                   self.phases=",".join(raw["protocolSection"]['designModule']['phases'])
+               except:
+                   self.phases=""
+
                #if 'armsInterventionsModule' in raw['protocolSection']:
                # if 'interventions' in raw['protocolSection']['armsInterventionsModule']:
                #    self.interventionName=self.collate(raw['protocolSection']['armsInterventionsModule']['interventions'],"name")
@@ -194,7 +206,8 @@ class Study:
                self.locationCity=self.collate(self.getValueIfExists(['contactsLocationsModule','locations'], 
                                                                     raw['protocolSection']), 'city')
                self.primaryOutcomeMeasure=self.collate(self.getValueIfExists(['outcomesModule', 'primaryOutcomes'],
-                                                                   raw['protocolSection']), "measure")  
+                                                                   raw['protocolSection']), "measure")
+               
                
            except:
                st.write(f"Error in study data {self.nctid}")
