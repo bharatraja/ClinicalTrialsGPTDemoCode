@@ -15,7 +15,7 @@ from tenacity import retry, wait_random_exponential, stop_after_attempt
 
 DEBUG=True
 
-st.set_page_config(page_title="Clinical Trials Companion",  page_icon=":bar_chart:", layout="wide")
+st.set_page_config(page_title="Clinical Trials Companion",  page_icon=":robot_face:", layout="wide")
 
 #region TODOS
  #ICON next to Title
@@ -83,6 +83,7 @@ class TrialsQuery:
     lat=""
     long=""
     studyStatus=""
+    other=""
 
     #region api endpoints
     api_base="https://beta.clinicaltrials.gov/api/v2"
@@ -98,12 +99,13 @@ class TrialsQuery:
     api_version="/version"
     #endregion
 
-    def __init__(self, conditon="", treatment="", location="", studyStatus=[]):
+    def __init__(self, conditon="", treatment="", location="", studyStatus=[], other=""):
         self.condition=condition
         self.treatment=treatment
         self.studyStatus=",".join(studyStatus)
 
         self.location=location
+        self.other=other
         if location != "":
             gc=findGeocode(location)
             try:
@@ -123,6 +125,7 @@ class TrialsQuery:
         query=( self.api_base + self.api_studies + "?" +
               f"query.cond={self.condition}&" +
               f"query.intr={self.treatment}&" +
+              f"query.term={self.other}&" +
               f"fields={fields}&" +
               "countTotal=true&" +
               f"pageSize={self.max_records}&"
@@ -134,9 +137,9 @@ class TrialsQuery:
             query+= f"postFilter.overallStatus={self.studyStatus}&"
 
         #if DEBUG:
-        #    st.write(f"query is {query}") 
+        #    st.write(urllib.parse.quote_plus(query,'/:&?='))
 
-        #st.write(urllib.parse.quote_plus(query,'/:&?='))
+        
         return urllib.parse.quote_plus(query,'/:&?=(),')
 
     def __str__(self) -> str:
@@ -296,7 +299,7 @@ def generate_message_prompt():
               column names in this data are combined without spaces. For example briefTitle column name should be interpreted as Brief Title.
               Here is how to use the different columns to understand data:
               nctid also know as study id the unique identification code given to each clinical study upon registration at ClinicalTrials.gov. The format is NCT followed by an 8-digit number. Also known as ClinicalTrials.gov Identifier
-              Each row is a seperate study with a unique Study ID OR nctid.
+              Each row in the dataframe provided is a seperate study with a unique Study ID OR nctid.
               Brief Title  provides a brief title of the study. A short title of the clinical study written in language intended for the lay public. The title should include, where possible, information on the participants, condition being evaluated, and intervention(s) studied.
               Lead Sponsor (like a Pharma company) for the study. The organization or person who initiates the study and who has authority and control over the study.
               Brief summary is a smummary of the what the study aims to achieve
@@ -340,6 +343,7 @@ st.sidebar.header("Specify what trials you are looking for:")
 condition=st.sidebar.text_input("Condition or Disease",  placeholder="Example: Obesity",on_change=getNewData)
 treatment=st.sidebar.text_input("Treament/Intervention", placeholder="Example: Ozempic", on_change=getNewData)
 location=st.sidebar.text_input("Location City", placeholder="Example: Houston", on_change=getNewData)
+other=st.sidebar.text_input("Other terms", placeholder="Example: Pfizer", on_change=getNewData)
 
 
 studyStatus=st.sidebar.multiselect("Status", ['ACTIVE_NOT_RECRUITING', 'COMPLETED', 'ENROLLING_BY_INVITATION', 'NOT_YET_RECRUITING',
@@ -353,15 +357,15 @@ search=st.sidebar.button("Find and Chat")
 
 #region-----MAIN WINDOW--------
 
-st.title(":bar_chart: Clinical Trials Demo GPT Copilot")
+st.title(":robot_face: Clinical Trials Demo GPT Copilot")
 
 
 with st.expander("", expanded=True):
-    if condition or treatment or location or studyStatus:
+    if condition or treatment or location or studyStatus or other:
         st.subheader("You current Search Criteria")
         st.write(f"""Condition is :blue[{condition if condition else 'None'}], Treatment is :blue[{treatment if treatment else 'None'}], 
                 Location is :blue[{location if location else 'None'}] 
-                Study status is :blue[{studyStatus}]""")
+                Study status is :blue[{studyStatus}] Other terms are :blue[{other}]""")
     else:
         st.subheader("Welcome!")
         st.markdown("Enter your choices  and chat")
@@ -372,7 +376,7 @@ left_column,  right_column = st.columns([.5,.5])
 #if condition or treatment or location:
 #if search or condition or treatment or location:
 if search or st.session_state['refreshData']:
-    trials=Trials(TrialsQuery(condition, treatment, location, studyStatus))
+    trials=Trials(TrialsQuery(condition, treatment, location, studyStatus, other))
     trials.getStudies()
 
  
