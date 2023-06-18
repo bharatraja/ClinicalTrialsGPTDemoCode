@@ -91,6 +91,10 @@ def generate_query_output(user_input="", model_to_use=""):
         elif str(model_to_use)=='GPT':
             #Azure version of the code
             st.write(st.session_state['messages'])
+            openai.api_type = "azure"
+            openai.api_base = os.getenv('OPENAI_API_BASE')
+            openai.api_version = "2023-03-15-preview"
+            openai.api_key = os.getenv("OPENAI_API_KEY")
             completion = openai.ChatCompletion.create(
                 engine=os.getenv('OPENAI_API_CHAT_COMPLETION'),
                 messages = st.session_state['messages'],
