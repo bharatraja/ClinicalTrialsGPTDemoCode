@@ -90,10 +90,10 @@ def generate_query_output(user_input="", model_to_use=""):
                 output=st.session_state['agent'].run(st.session_state['messages']) 
         elif str(model_to_use)=='GPT':
             #Azure version of the code
-            st.write(st.session_state['messages'])
+            #st.write(st.session_state['messages'])
             openai.api_type = "azure"
             openai.api_base = os.getenv('OPENAI_API_BASE')
-            openai.api_version = "2023-03-15-preview"
+            openai.api_version = os.getenv('OPENAI_API_VERSION')#"2023-03-15-preview"
             openai.api_key = os.getenv("OPENAI_API_KEY")
             completion = openai.ChatCompletion.create(
                 engine=os.getenv('OPENAI_API_CHAT_COMPLETION'),
@@ -105,9 +105,9 @@ def generate_query_output(user_input="", model_to_use=""):
                 presence_penalty=0,
                 stop=None)
             
-            st.write("After getting data")
+            #st.write("After getting data")
             output=completion.choices[0].message.content
-            st.write("Before sending back")
+            #st.write("Before sending back")
         else:
             st.write("No model found")
             output="Sorry I dont know the answer"
@@ -249,11 +249,11 @@ if not st.session_state['df'] is None:
                     st.session_state['messages'].append({"role": "user", "content": user_input})
                 
                     with st.spinner('GPT Getting answers for you...'):
-                        #try:
+                        try:
                             #output=st.session_state['agent'].run(user_input)
                             output=generate_query_output(user_input, modelToUse)
-                        #except:
-                            #output="Sorry I dont know the answer to that"
+                        except:
+                            output="Sorry I dont know the answer to that"
 
                 #Append the out from model
                 st.session_state['generated'].append(output)
