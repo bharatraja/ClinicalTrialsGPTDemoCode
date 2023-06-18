@@ -13,6 +13,7 @@ from langchain.schema import HumanMessage
 from langchain.agents import create_pandas_dataframe_agent
 from tenacity import retry, wait_random_exponential, stop_after_attempt 
 import ClinicalTrialClasses as CT
+import asyncio
 
 DEBUG=True
 
@@ -122,6 +123,8 @@ if 'refreshData' not in st.session_state:
     st.session_state['refreshData'] = False
 if 'refreshChat' not in st.session_state:
     st.session_state['refreshChat'] = False
+if 'trials' not in st.session_state:
+    st.session_state['trials']=None
 if 'df' not in st.session_state:
     st.session_state['df']=None
 if 'json' not in st.session_state:
@@ -164,7 +167,6 @@ search=st.sidebar.button("Find and Chat")
 
 st.title(":robot_face: Clinical Trials Demo GPT Copilot")
 
-import streamlit as st
 
 
 
@@ -197,8 +199,14 @@ if search or st.session_state['refreshData']:
 
     #st.write("Getting fresh data")
     #write info in session state
+    st.session_state['trials']=trials
     st.session_state['df']=trials.getStudiesAsDF()
-    st.session_state['json']=trials.getStudiesAsJson()
+    try:
+        st.session_state['json']=trials.getStudiesAsJson()
+    except:
+        #f
+        pass
+    
     st.session_state['refreshData']=False
     st.session_state['noOfStudies']=trials.totalCount
     st.session_state['recordsShown']=len(trials.studies)
@@ -223,7 +231,14 @@ if search or st.session_state['refreshData']:
             st.metric("Records shown", st.session_state['recordsShown']) 
    
     
-if not st.session_state['df'] is None:
+if not st.session_state['trials'] is None:
+    st.session_state['df']=st.session_state['trials'].getStudiesAsDF()
+    try: 
+        st.session_state['json']=st.session_state['trials'].getStudiesAsJson()
+        #st.write(st.session_state['json'])
+    except:
+        #st.write("Error in json")
+        pass
     #with left_column:    
     with expander:
         st.dataframe(data=st.session_state['df'], use_container_width=True, hide_index=True)
@@ -255,10 +270,17 @@ if not st.session_state['df'] is None:
                 st.session_state['messages'].append({"role": "user", "content": user_input})
                 
                 with st.spinner('GPT Getting answers for you...'):
-                    try:
+                    #try:
+                    #loop=asyncio.get_event_loop()
+                    try: 
+                        #loop = asyncio.new_event_loop()
+                        #asyncio.set_event_loop(loop)
+                        #tsk=loop.create_task(generate_query_output(user_input, modelToUse))
+                        #loop.run_until_complete(asyncio.wait([tsk]))
+                        #output=tsk.result()
                         output=generate_query_output(user_input, modelToUse)
                     except:
-                        output="Sorry I dont know the answer to that"
+                       output="Sorry I dont know the answer to that"
 
                      #Append the out from model
                     st.session_state['generated'].append(output)

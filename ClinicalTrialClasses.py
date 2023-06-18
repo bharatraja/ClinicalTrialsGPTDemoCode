@@ -12,6 +12,7 @@ import os
 from geopy.geocoders import Nominatim
 import pandas as pd
 from langchain.schema import HumanMessage
+import asyncio
 
 #region TODOS
 
@@ -30,12 +31,12 @@ def getChatModel():
     )
     return model
 
-def getSummary(model=None, raw=""):
+async def getSummary(model=None, raw=""):
     if model is not None:
         try:
             
             msg=f"Summarize the below:\n\n {raw}"
-            return model( [ HumanMessage(content=msg)]).content
+            return await  model( [ HumanMessage(content=msg)]).content
             #st.write(output)
             #return output
         except:
@@ -219,12 +220,7 @@ class Study:
                self.briefSummary=raw['protocolSection']['descriptionModule']['briefSummary']
                self.status=raw['protocolSection']['statusModule']['overallStatus']
 
-               #get summary of eligibility criteria
-               with st.spinner('GPT is summarizing Inclusion/Exclusion Criteria for these studies...'):
-                self.eligibilityCriteria=raw['protocolSection']['eligibilityModule']['eligibilityCriteria']
-                self.eligibilityCriteria=getSummary(getChatModel(), self.eligibilityCriteria)
-                #self.eligibilityCriteria="Mock inclusion/exclusion"
-                #st.write(self.eligibilityCriteria)
+               
                
                self.sex=raw['protocolSection']['eligibilityModule']['sex']
                try:
@@ -250,9 +246,22 @@ class Study:
                self.primaryOutcomeMeasure=self.collate(self.getValueIfExists(['outcomesModule', 'primaryOutcomes'],
                                                                    raw['protocolSection']), "measure")
                
+               #get summary of eligibility criteria
+               with st.spinner('GPT is summarizing Inclusion/Exclusion Criteria for these studies...'):
+                self.eligibilityCriteria=raw['protocolSection']['eligibilityModule']['eligibilityCriteria']
+
+                #You can replace the statements on loop below with just the one below but you will get a error on not waiting for result
+                #self.eligibilityCriteria=getSummary(getChatModel(), self.eligibilityCriteria).result()
+               
+                loop=asyncio.get_event_loop()
+                tsk=loop.create_task(getSummary(getChatModel(), self.eligibilityCriteria))
+                loop.run_until_complete(asyncio.wait([tsk]))
+                self.eligibilityCriteria=tsk.result()
+                
                
            except:
-               st.write(f"Error in study data {self.nctid}")
+               #st.write(f"Error in study data {self.nctid}")
+               pass
                #st.write(raw)
 
 
