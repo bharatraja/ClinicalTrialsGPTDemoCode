@@ -31,6 +31,7 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
  #remove @st.cache_data from findGeocode
 #endregion
 
+#region Functions
 @st.cache_resource
 def getChatModel():
     model = AzureChatOpenAI(
@@ -46,7 +47,6 @@ def getChatModel():
     
     
 
-#region Begin Main UI Code
 #@st.cache_data breaks the way the controls function
 def getNewData():
     st.session_state['refreshData'] = True
@@ -106,6 +106,9 @@ def generate_query_output(user_input="", model_to_use=""):
             st.write("No model found")
             output="Sorry I dont know the answer"
         return output          
+#endregion
+
+#region Begin Main UI Code
 
 
 #region Initialise session state variables
@@ -156,7 +159,7 @@ search=st.sidebar.button("Find and Chat")
 st.title(":robot_face: Clinical Trials Demo GPT Copilot")
 
 
-
+#region expander
 with st.expander("", expanded=True):
     if condition or treatment or location or studyStatus or other:
         st.subheader("Welcome! Enter your choices and chat")
@@ -172,7 +175,7 @@ with st.expander("", expanded=True):
     else:
         st.subheader("Welcome!")
         st.markdown("Enter your choices  and chat")
-
+#endregion
 
 left_column,  right_column = st.columns([.5,.5])
 
@@ -240,11 +243,11 @@ if not st.session_state['df'] is None:
                     st.session_state['messages'].append({"role": "user", "content": user_input})
                 
                     with st.spinner('GPT Getting answers for you...'):
-                        try:
+                        #try:
                             #output=st.session_state['agent'].run(user_input)
                             output=generate_query_output(user_input, modelToUse)
-                        except:
-                            output="Sorry I dont know the answer to that"
+                        #except:
+                            #output="Sorry I dont know the answer to that"
 
                 #Append the out from model
                 st.session_state['generated'].append(output)
