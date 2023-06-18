@@ -45,7 +45,41 @@ def getChatModel():
     return model
 
 
-    
+@retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(3))
+async def generate_query_output(user_input="", model_to_use=""):
+    #append user input to history and messages
+    if user_input != "":
+        #st.write(model_to_use)
+        if str(model_to_use)=='LANGCHAIN':
+            if st.session_state['agent'] is not None:
+                #st.write(st.session_state['messages'])
+                output= st.session_state['agent'].run(st.session_state['messages']) 
+        elif str(model_to_use)=='GPT':
+            #Azure version of the code
+            #st.write(st.session_state['messages'])
+            openai.api_type = "azure"
+            openai.api_base = os.getenv('OPENAI_API_BASE')
+            openai.api_version = os.getenv('OPENAI_API_VERSION')#"2023-03-15-preview"
+            openai.api_key = os.getenv("OPENAI_API_KEY")
+            return openai.ChatCompletion.create(
+               engine=os.getenv('OPENAI_API_CHAT_COMPLETION'),
+                messages = st.session_state['messages'],
+                temperature=0.7,
+                #max_tokens=800,
+                top_p=0.95,
+                frequency_penalty=0,
+                presence_penalty=0,
+                stop=None).choices[0].message.content
+            #return await (  executeQuery() )
+
+            #st.write("After getting data")
+            #output=await completion.choices[0].message.content
+            #st.write("Before sending back")
+        else:
+            st.write("No model found")
+            output="Sorry I dont know the answer"
+        return output          
+  
     
 
 #@st.cache_data breaks the way the controls function
@@ -80,39 +114,7 @@ def generate_system_prompt_gpt(data=""):
                 {data}                
                 """}]
  
-@retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(3))
-def generate_query_output(user_input="", model_to_use=""):
-    #append user input to history and messages
-    if user_input != "":
-        #st.write(model_to_use)
-        if str(model_to_use)=='LANGCHAIN':
-            if st.session_state['agent'] is not None:
-                #st.write(st.session_state['messages'])
-                output=st.session_state['agent'].run(st.session_state['messages']) 
-        elif str(model_to_use)=='GPT':
-            #Azure version of the code
-            #st.write(st.session_state['messages'])
-            openai.api_type = "azure"
-            openai.api_base = os.getenv('OPENAI_API_BASE')
-            openai.api_version = os.getenv('OPENAI_API_VERSION')#"2023-03-15-preview"
-            openai.api_key = os.getenv("OPENAI_API_KEY")
-            completion = openai.ChatCompletion.create(
-                engine=os.getenv('OPENAI_API_CHAT_COMPLETION'),
-                messages = st.session_state['messages'],
-                temperature=0.7,
-                #max_tokens=800,
-                top_p=0.95,
-                frequency_penalty=0,
-                presence_penalty=0,
-                stop=None)
-            
-            #st.write("After getting data")
-            output=completion.choices[0].message.content
-            #st.write("Before sending back")
-        else:
-            st.write("No model found")
-            output="Sorry I dont know the answer"
-        return output          
+
 #endregion
 
 #region Begin Main UI Code
@@ -270,17 +272,18 @@ if not st.session_state['trials'] is None:
                 st.session_state['messages'].append({"role": "user", "content": user_input})
                 
                 with st.spinner('GPT Getting answers for you...'):
-                    #try:
-                    #loop=asyncio.get_event_loop()
                     try: 
-                        #loop = asyncio.new_event_loop()
-                        #asyncio.set_event_loop(loop)
-                        #tsk=loop.create_task(generate_query_output(user_input, modelToUse))
-                        #loop.run_until_complete(asyncio.wait([tsk]))
-                        #output=tsk.result()
-                        output=generate_query_output(user_input, modelToUse)
-                    except:
-                       output="Sorry I dont know the answer to that"
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                        tsk=loop.create_task(generate_query_output(user_input, modelToUse))
+                        loop.run_until_complete(asyncio.wait([tsk]))
+                        output=tsk.result()
+                        #original synchronus way
+                        #output=generate_query_output(user_input, modelToUse)
+                    except Exception as e:
+                        pass
+                        #st.write(e)
+                        output="Sorry I dont know the answer to that"
 
                      #Append the out from model
                     st.session_state['generated'].append(output)

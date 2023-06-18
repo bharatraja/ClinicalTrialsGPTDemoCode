@@ -259,8 +259,8 @@ class Study:
                 self.eligibilityCriteria=tsk.result()
                 
                
-           except:
-               #st.write(f"Error in study data {self.nctid}")
+           except Exception as e:
+               #st.write(f"Error in study data {self.nctid}, {e}")
                pass
                #st.write(raw)
 
