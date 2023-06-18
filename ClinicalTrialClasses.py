@@ -2,6 +2,8 @@
 
 
 import streamlit as st
+import openai
+from langchain.chat_models import AzureChatOpenAI
 import requests
 from requests.exceptions import HTTPError
 import json
@@ -9,12 +11,39 @@ import urllib.parse
 import os
 from geopy.geocoders import Nominatim
 import pandas as pd
+from langchain.schema import HumanMessage
 
 #region TODOS
 
 #endregion
 
 DEBUG=True
+
+@st.cache_resource
+def getChatModel():
+    model = AzureChatOpenAI(
+        openai_api_base=os.getenv('OPENAI_API_BASE'),
+        openai_api_version="2023-03-15-preview",
+        deployment_name=os.getenv('OPENAI_API_CHAT_COMPLETION'),
+        openai_api_key=os.getenv('OPENAI_API_KEY'),
+        openai_api_type = "azure",
+    )
+    return model
+
+def getSummary(model=None, raw=""):
+    if model is not None:
+        try:
+            
+            msg=f"Summarize the below:\n\n {raw}"
+            return model( [ HumanMessage(content=msg)]).content
+            #st.write(output)
+            #return output
+        except:
+            return ""
+   
+    
+
+
 
 @st.cache_data
 def getQueryResultsFromCTGov(query=""):
@@ -35,7 +64,6 @@ def findGeocode(city):
       
     except:
         return None  
-
 
 
 def camel_case_split(str):
@@ -60,7 +88,7 @@ class TrialsQuery:
     treatment="" #treament same as intervention
     location=""  #location could be a city but will expand later
     range="100mi"    #default range
-    max_records=50
+    max_records=5
     lat=""
     long=""
     studyStatus=""
@@ -101,7 +129,7 @@ class TrialsQuery:
 
         #need to urlencode
         if fields is None:
-            fields="NCTId,BriefTitle,LeadSponsorName,LocationCity,LocationFacility,InterventionName,PrimaryOutcomeMeasure,BriefSummary,OverallStatus,Phase,Sex" #,EligibilityCriteriacannot have spaces
+            fields="NCTId,BriefTitle,LeadSponsorName,LocationCity,LocationFacility,InterventionName,PrimaryOutcomeMeasure,BriefSummary,OverallStatus,Phase,Sex,EligibilityCriteria" #cannot have spaces
 
         query=( self.api_base + self.api_studies + "?" +
               f"query.cond={self.condition}&" +
@@ -145,11 +173,15 @@ class Study:
    locationFacility=""
    status=""
    phases=""
-   #eligibilityCriteria=""
+   eligibilityCriteria=""
    sex=""
 
-
-   def collate(self, arr=[],key=""):
+   #limit restircs how many elements of the array we collate this is the prevent the 
+   # number of tokens sent to gpt  
+   def collate(self, arr=[],key="", limit=0):
+       if limit!=0:
+           arr=[t for i, t in enumerate(arr)
+                                if i < limit]
        try: 
         intr=[t[key] for t in arr]
         return ', '.join(intr)
@@ -186,7 +218,14 @@ class Study:
                self.leadSponsor=raw['protocolSection']['sponsorCollaboratorsModule']['leadSponsor']['name']
                self.briefSummary=raw['protocolSection']['descriptionModule']['briefSummary']
                self.status=raw['protocolSection']['statusModule']['overallStatus']
-               #self.eligibilityCriteria=raw['protocolSection']['eligibilityModule']['eligibilityCriteria']
+
+               #get summary of eligibility criteria
+               with st.spinner('GPT is summarizing Inclusion/Exclusion Criteria for these studies...'):
+                self.eligibilityCriteria=raw['protocolSection']['eligibilityModule']['eligibilityCriteria']
+                self.eligibilityCriteria=getSummary(getChatModel(), self.eligibilityCriteria)
+                #self.eligibilityCriteria="Mock inclusion/exclusion"
+                #st.write(self.eligibilityCriteria)
+               
                self.sex=raw['protocolSection']['eligibilityModule']['sex']
                try:
                    self.phases=",".join(raw["protocolSection"]['designModule']['phases'])
@@ -200,11 +239,14 @@ class Study:
                self.interventionName=self.collate( self.getValueIfExists(['armsInterventionsModule', 'interventions'],
                                                  raw['protocolSection']), 'name')
                
+               #Truncate to only 5 locations
                self.locationFacility=self.collate( self.getValueIfExists(['contactsLocationsModule', 'locations'], 
-                                                 raw['protocolSection']), 'facility')
-
+                                                 raw['protocolSection']), 'facility', 5)
                self.locationCity=self.collate(self.getValueIfExists(['contactsLocationsModule','locations'], 
-                                                                    raw['protocolSection']), 'city')
+                                                                    raw['protocolSection']), 'city', 5)
+               
+               
+               
                self.primaryOutcomeMeasure=self.collate(self.getValueIfExists(['outcomesModule', 'primaryOutcomes'],
                                                                    raw['protocolSection']), "measure")
                
@@ -264,12 +306,15 @@ class Trials:
 
         #write meaningful column names
         df.columns=[camel_case_split(str(n)) for n in df.columns]
-        
-        
-
         return df
     else:
         return None
+    
+  #returns studies as json
+  def getStudiesAsJson(self):
+    df=self.getStudiesAsDF()
+    if df is not None:
+        return df.to_json()
    
       
 

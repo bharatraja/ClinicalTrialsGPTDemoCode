@@ -41,6 +41,9 @@ def getChatModel():
         openai_api_type = "azure",
     )
     return model
+
+
+    
     
 
 #region Begin Main UI Code
@@ -53,8 +56,9 @@ def getNewChatResponse():
     st.session_state['refreshChat'] = True
 
 @st.cache_data
-def generate_message_prompt():
-     return [{"role":"system","content": """You are an AI Assistant that helps interpert Clincal Trials Data in a data. study id is nctid. 
+def generate_system_prompt_langchain(model_to_use='', data=""):
+    
+    return [{"role":"system","content": """You are an AI Assistant that helps interpert Clincal Trials Data in a data. study id is nctid. 
               column names in this data are combined without spaces. For example briefTitle column name should be interpreted as Brief Title.
               Here is how to use the different columns to understand data:
               nctid also know as study id the unique identification code given to each clinical study upon registration at ClinicalTrials.gov. The format is NCT followed by an 8-digit number. Also known as ClinicalTrials.gov Identifier
@@ -69,11 +73,40 @@ def generate_message_prompt():
               Similary with other columns. If you dont know any answer say you dont know and point to https://clinicaltrials.gov for information"""}
                 ]
 
+#@st.cache_data
+def generate_system_prompt_gpt(data=""):
+    return [{"role":"system","content": f"""You are an AI assistant that answers questions on Clinical trials studies information provided as json below:
+                {data}                
+                """}]
+ 
 @retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(3))
-def generate_query_output(user_input=""):
+def generate_query_output(user_input="", model_to_use=""):
+    #append user input to history and messages
     if user_input != "":
-         if st.session_state['agent'] is not None:
-             return st.session_state['agent'].run(user_input) 
+        #st.write(model_to_use)
+        if str(model_to_use)=='LANGCHAIN':
+            if st.session_state['agent'] is not None:
+                #st.write(st.session_state['messages'])
+                output=st.session_state['agent'].run(st.session_state['messages']) 
+        elif str(model_to_use)=='GPT':
+            #Azure version of the code
+            #st.write(st.session_state['messages'])
+            completion = openai.ChatCompletion.create(
+                engine=os.getenv('OPENAI_API_CHAT_COMPLETION'),
+                messages = st.session_state['messages'],
+                temperature=0.7,
+                #max_tokens=800,
+                top_p=0.95,
+                frequency_penalty=0,
+                presence_penalty=0,
+                stop=None)
+            output=completion.choices[0].message.content
+            
+        else:
+            st.write("No model found")
+            output="Sorry I dont know the answer"
+        return output          
+
 
 #region Initialise session state variables
 if 'refreshData' not in st.session_state:
@@ -82,6 +115,8 @@ if 'refreshChat' not in st.session_state:
     st.session_state['refreshChat'] = False
 if 'df' not in st.session_state:
     st.session_state['df']=None
+if 'json' not in st.session_state:
+    st.session_state['json']=""
 if 'noOfStudies' not in st.session_state:
     st.session_state['noOfStudies']=0
 if 'recordsShown' not in st.session_state:
@@ -91,7 +126,7 @@ if 'generated' not in st.session_state:
 if 'past' not in st.session_state:
     st.session_state['past'] = []
 if 'messages' not in st.session_state:
-    st.session_state['messages'] =generate_message_prompt()
+    st.session_state['messages'] =[]
 if 'agent' not in st.session_state:
     st.session_state['agent']=None
 #endregion
@@ -110,6 +145,8 @@ studyStatus=st.sidebar.multiselect("Status", ['ACTIVE_NOT_RECRUITING', 'COMPLETE
                                               'AVAILABLE','NO_LONGER_AVAILABLE', 'TEMPORARILY_NOT_AVAILABLE',
                                               'APPROVED_FOR_MARKETING','WITHHELD','UNKNOWN'],
                                               on_change=getNewData)
+modelToUse=st.sidebar.selectbox("Model", ['GPT', 'LANGCHAIN'], on_change=getNewData)
+
 search=st.sidebar.button("Find and Chat")
 
 #endregion------END of SIDEBAR ----
@@ -122,10 +159,16 @@ st.title(":robot_face: Clinical Trials Demo GPT Copilot")
 
 with st.expander("", expanded=True):
     if condition or treatment or location or studyStatus or other:
-        st.subheader("You current Search Criteria")
-        st.write(f"""Condition is :blue[{condition if condition else 'None'}], Treatment is :blue[{treatment if treatment else 'None'}], 
+        st.subheader("Welcome! Enter your choices and chat")
+        st.write(f"""You currenct search criteria is: Condition is :blue[{condition if condition else 'None'}], Treatment is :blue[{treatment if treatment else 'None'}], 
                 Location is :blue[{location if location else 'None'}] 
-                Study status is :blue[{studyStatus}] Other terms are :blue[{other}]""")
+                Study status is :blue[{studyStatus}] Other terms are :blue[{other}], 
+                Model selected is :blue[{modelToUse}]""")
+        
+        st.warning("""Given this is a demo we summarize the inclusion/exclusion criteria, bring back limited fields and restrict 
+                       location city/facility  to 5 and results to limited number of records. You can remove these limiations
+                       in your production application
+                """)
     else:
         st.subheader("Welcome!")
         st.markdown("Enter your choices  and chat")
@@ -139,17 +182,24 @@ if search or st.session_state['refreshData']:
     trials=CT.Trials(CT.TrialsQuery(condition, treatment, location, studyStatus, other))
     trials.getStudies()
 
- 
-
     #st.write("Getting fresh data")
     #write info in session state
     st.session_state['df']=trials.getStudiesAsDF()
+    st.session_state['json']=trials.getStudiesAsJson()
     st.session_state['refreshData']=False
     st.session_state['noOfStudies']=trials.totalCount
     st.session_state['recordsShown']=len(trials.studies)
-    if not st.session_state['df'] is None:
-        st.session_state['agent']=create_pandas_dataframe_agent(getChatModel(),st.session_state['df']) 
+    st.session_state['generated'] = []
+    st.session_state['past'] = []
 
+    
+    if  modelToUse=='LANGCHAIN':
+        #st.write("Here to generate prompt for langchain")
+        st.session_state['agent']=create_pandas_dataframe_agent(getChatModel(),st.session_state['df']) 
+        st.session_state['messages']=generate_system_prompt_langchain()
+    else:
+        st.session_state['messages']=generate_system_prompt_gpt(st.session_state['json'])
+        #st.write(f"Message in session state Now={st.session_state['messages']}")
 
 with left_column:
         l, r = st.columns([.3,.8])
@@ -184,31 +234,31 @@ if not st.session_state['df'] is None:
 
             if (submit_button or st.session_state['refreshChat']) and user_input:
                 with response_container:
+
+                    #Append the user input
+                    st.session_state['past'].append(user_input)
+                    st.session_state['messages'].append({"role": "user", "content": user_input})
+                
                     with st.spinner('GPT Getting answers for you...'):
                         try:
                             #output=st.session_state['agent'].run(user_input)
-                            output=generate_query_output(user_input)
+                            output=generate_query_output(user_input, modelToUse)
                         except:
-                            #st.write()
                             output="Sorry I dont know the answer to that"
 
-                st.session_state['past'].append(user_input)
+                #Append the out from model
                 st.session_state['generated'].append(output)
                 
-                st.session_state['messages'].append({"role": "user", "content": user_input})
-                st.session_state['messages'].append({"role": "assistant", "content": output})
-
-                #st.write(st.session_state['messages'])
-
-           
+                st.session_state['messages'].append({"role": "assistant", "content": output})                #st.write(st.session_state['messages'])
                 st.session_state['refreshChat']=False
 
             # reset everything
             if clear_button:
                 st.session_state['generated'] = []
                 st.session_state['past'] = []
-                st.session_state['messages'] = generate_message_prompt()
-
+                st.session_state['messages'] = []
+                if modelToUse=='GPT':
+                    st.session_state['messages']=generate_system_prompt_gpt(st.session_state['json'])
 
         if st.session_state['generated']:
             with response_container:
