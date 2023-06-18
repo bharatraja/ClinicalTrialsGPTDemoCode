@@ -90,7 +90,7 @@ def generate_query_output(user_input="", model_to_use=""):
                 output=st.session_state['agent'].run(st.session_state['messages']) 
         elif str(model_to_use)=='GPT':
             #Azure version of the code
-            #st.write(st.session_state['messages'])
+            st.write(st.session_state['messages'])
             completion = openai.ChatCompletion.create(
                 engine=os.getenv('OPENAI_API_CHAT_COMPLETION'),
                 messages = st.session_state['messages'],
@@ -100,8 +100,10 @@ def generate_query_output(user_input="", model_to_use=""):
                 frequency_penalty=0,
                 presence_penalty=0,
                 stop=None)
-            output=completion.choices[0].message.content
             
+            st.write("After getting data")
+            output=completion.choices[0].message.content
+            st.write("Before sending back")
         else:
             st.write("No model found")
             output="Sorry I dont know the answer"
