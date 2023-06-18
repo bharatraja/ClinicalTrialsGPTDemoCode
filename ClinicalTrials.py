@@ -36,7 +36,7 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 def getChatModel():
     model = AzureChatOpenAI(
         openai_api_base=os.getenv('OPENAI_API_BASE'),
-        openai_api_version="2023-03-15-preview",
+        openai_api_version=os.getenv('OPENAI_API_VERSION'),#"2023-03-15-preview",
         deployment_name=os.getenv('OPENAI_API_CHAT_COMPLETION'),
         openai_api_key=os.getenv('OPENAI_API_KEY'),
         openai_api_type = "azure",
@@ -164,9 +164,13 @@ search=st.sidebar.button("Find and Chat")
 
 st.title(":robot_face: Clinical Trials Demo GPT Copilot")
 
+import streamlit as st
+
+
 
 #region expander
-with st.expander("", expanded=True):
+expander=st.expander("", expanded=True)
+with expander:
     if condition or treatment or location or studyStatus or other:
         st.subheader("Welcome! Enter your choices and chat")
         st.write(f"""You currenct search criteria is: Condition is :blue[{condition if condition else 'None'}], Treatment is :blue[{treatment if treatment else 'None'}], 
@@ -174,16 +178,16 @@ with st.expander("", expanded=True):
                 Study status is :blue[{studyStatus}] Other terms are :blue[{other}], 
                 Model selected is :blue[{modelToUse}]""")
         
-        st.warning("""Given this is a demo we summarize the inclusion/exclusion criteria, bring back limited fields and restrict 
-                       location city/facility  to 5 and results to limited number of records. You can remove these limiations
+        st.info("""Given this is a demo we summarize the inclusion/exclusion criteria, bring back limited fields and restrict 
+                       location city/facility  to 5 and results to limited number of records. You can remove these limitations
                        in your production application
-                """)
+                """, icon="ℹ️")
     else:
         st.subheader("Welcome!")
         st.markdown("Enter your choices  and chat")
 #endregion
 
-left_column,  right_column = st.columns([.5,.5])
+#left_column,  right_column = st.columns([.5,.5])
 
 #if condition or treatment or location:
 #if search or condition or treatment or location:
@@ -210,7 +214,8 @@ if search or st.session_state['refreshData']:
         st.session_state['messages']=generate_system_prompt_gpt(st.session_state['json'])
         #st.write(f"Message in session state Now={st.session_state['messages']}")
 
-with left_column:
+#with left_column:
+    with expander:
         l, r = st.columns([.3,.8])
         with l:
             st.metric("No of Studies", st.session_state['noOfStudies'])
@@ -219,55 +224,55 @@ with left_column:
    
     
 if not st.session_state['df'] is None:
-    with left_column:    
+    #with left_column:    
+    with expander:
         st.dataframe(data=st.session_state['df'], use_container_width=True, hide_index=True)
-        st.divider()
+        #st.divider()
         #st.write(st.session_state['df'].to_json(orient="records", lines=True))
         #st.write(st.session_state['df'].to_csv(sep='\t'))
-    with right_column:
+    #with right_column:
    
         #end of UI and start of chat block
-        st.markdown(":blue[Now that you have data, you can ask questions of it and GPT Companion will answer them for you]")
+    st.info("Now that you have data, you can ask questions of it and GPT Companion will answer them for you", icon="ℹ️")
         
-        # container for chat history
-        response_container = st.container()
-        # container for text box
-        container = st.container()
+    # container for chat history
+    response_container = st.container()
+    # container for text box
+    container = st.container()
 
-        with container:
-            with st.form(key='my_form', clear_on_submit=True):
-                user_input = st.text_area("You:", key='input', height=100)
-                submit_button = st.form_submit_button(label='Send')
-                clear_button = st.form_submit_button(label="Clear Conversation")
+    with container:
+        with st.form(key='my_form', clear_on_submit=True):
+            user_input = st.text_area("You:", key='input', height=100)
+            submit_button = st.form_submit_button(label='Send')
+            clear_button = st.form_submit_button(label="Clear Conversation")
 
 
-            if (submit_button or st.session_state['refreshChat']) and user_input:
-                with response_container:
+        if (submit_button or st.session_state['refreshChat']) and user_input:
+            with response_container:
 
-                    #Append the user input
-                    st.session_state['past'].append(user_input)
-                    st.session_state['messages'].append({"role": "user", "content": user_input})
+                #Append the user input
+                st.session_state['past'].append(user_input)
+                st.session_state['messages'].append({"role": "user", "content": user_input})
                 
-                    with st.spinner('GPT Getting answers for you...'):
-                        try:
-                            #output=st.session_state['agent'].run(user_input)
-                            output=generate_query_output(user_input, modelToUse)
-                        except:
-                            output="Sorry I dont know the answer to that"
+                with st.spinner('GPT Getting answers for you...'):
+                    try:
+                        output=generate_query_output(user_input, modelToUse)
+                    except:
+                        output="Sorry I dont know the answer to that"
 
-                #Append the out from model
-                st.session_state['generated'].append(output)
+                     #Append the out from model
+                    st.session_state['generated'].append(output)
                 
-                st.session_state['messages'].append({"role": "assistant", "content": output})                #st.write(st.session_state['messages'])
-                st.session_state['refreshChat']=False
+                    st.session_state['messages'].append({"role": "assistant", "content": output})                #st.write(st.session_state['messages'])
+                    st.session_state['refreshChat']=False
 
             # reset everything
-            if clear_button:
-                st.session_state['generated'] = []
-                st.session_state['past'] = []
-                st.session_state['messages'] = []
-                if modelToUse=='GPT':
-                    st.session_state['messages']=generate_system_prompt_gpt(st.session_state['json'])
+        if clear_button:
+            st.session_state['generated'] = []
+            st.session_state['past'] = []
+            st.session_state['messages'] = []
+            if modelToUse=='GPT':
+                st.session_state['messages']=generate_system_prompt_gpt(st.session_state['json'])
 
         if st.session_state['generated']:
             with response_container:
