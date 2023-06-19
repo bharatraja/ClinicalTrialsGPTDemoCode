@@ -61,7 +61,7 @@ async def generate_query_output(user_input="", model_to_use=""):
             openai.api_base = os.getenv('OPENAI_API_BASE')
             openai.api_version = os.getenv('OPENAI_API_VERSION')#"2023-03-15-preview"
             openai.api_key = os.getenv("OPENAI_API_KEY")
-            return openai.ChatCompletion.create(
+            completion= await openai.ChatCompletion.acreate(
                engine=os.getenv('OPENAI_API_CHAT_COMPLETION'),
                 messages = st.session_state['messages'],
                 temperature=0.7,
@@ -69,7 +69,9 @@ async def generate_query_output(user_input="", model_to_use=""):
                 top_p=0.95,
                 frequency_penalty=0,
                 presence_penalty=0,
-                stop=None).choices[0].message.content
+                stop=None)
+            
+            return completion.choices[0].message.content
             #return await (  executeQuery() )
 
             #st.write("After getting data")
@@ -281,7 +283,7 @@ if not st.session_state['trials'] is None:
                         #original synchronus way
                         #output=generate_query_output(user_input, modelToUse)
                     except Exception as e:
-                        pass
+                        #pass
                         #st.write(e)
                         output="Sorry I dont know the answer to that"
 

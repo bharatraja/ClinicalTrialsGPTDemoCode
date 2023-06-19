@@ -31,19 +31,40 @@ def getChatModel():
     )
     return model
 
-async def getSummary(model=None, raw=""):
-    if model is not None:
-        try:
-            
-            msg=f"Summarize the below:\n\n {raw}"
-            return await  model( [ HumanMessage(content=msg)]).content
-            #st.write(output)
-            #return output
-        except:
-            return ""
+# async def getSummary(model=None, raw=""):
+#     if model is not None:
+#         try:
+           
+#             msg=f"Summarize the below:\n\n {raw}"
+#             st.write(msg)
+#             return await (model( [ HumanMessage(content=msg)]).content)
+#             #st.write(output)
+#              #return output
+#         except:
+#              return ""
    
     
+async def getSummary(raw=""):
+    openai.api_type = "azure"
+    openai.api_base = os.getenv('OPENAI_API_BASE')
+    openai.api_version = os.getenv('OPENAI_API_VERSION')#"2023-03-15-preview"
+    openai.api_key = os.getenv("OPENAI_API_KEY")
+    msg=[{"role":"system","content": "You are an AI assistant that summarizes Clinical Trials Study  eligibility Criteria"},
+          {"role": "user", "content": f"""Please summarize the below  
+                {raw}                
+                """}]
 
+    completion= await openai.ChatCompletion.acreate(
+               engine=os.getenv('OPENAI_API_CHAT_COMPLETION'),
+                messages = msg,
+                temperature=0.7,
+                #max_tokens=800,
+                top_p=0.95,
+                frequency_penalty=0,
+                presence_penalty=0,
+                stop=None)
+            
+    return completion.choices[0].message.content
 
 
 @st.cache_data
@@ -249,18 +270,22 @@ class Study:
                #get summary of eligibility criteria
                with st.spinner('GPT is summarizing Inclusion/Exclusion Criteria for these studies...'):
                 self.eligibilityCriteria=raw['protocolSection']['eligibilityModule']['eligibilityCriteria']
-
-                #You can replace the statements on loop below with just the one below but you will get a error on not waiting for result
-                #self.eligibilityCriteria=getSummary(getChatModel(), self.eligibilityCriteria).result()
-               
-                loop=asyncio.get_event_loop()
-                tsk=loop.create_task(getSummary(getChatModel(), self.eligibilityCriteria))
-                loop.run_until_complete(asyncio.wait([tsk]))
-                self.eligibilityCriteria=tsk.result()
                 
-               
+                #the code below summarize the information in an asynch way however it still happens to call everything serially
+                #loop=asyncio.get_event_loop()
+                #loop = asyncio.new_event_loop()
+                #asyncio.set_event_loop(loop)
+                #tsk=loop.create_task(getSummary(self.eligibilityCriteria))
+                #loop.run_until_complete(asyncio.wait([tsk]))
+                #self.eligibilityCriteria=tsk.result()
+                
+                #Instead we truncate the results to 1000 characters
+                self.eligibilityCriteria=self.eligibilityCriteria[0:1000]
+                #st.write(len(self.eligibilityCriteria))
+
+
            except Exception as e:
-               #st.write(f"Error in study data {self.nctid}, {e}")
+               st.write(f"Error in study data {self.nctid}, {e}")
                pass
                #st.write(raw)
 
