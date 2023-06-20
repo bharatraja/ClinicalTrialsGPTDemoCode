@@ -1,4 +1,4 @@
-##Environmental Variables to Configure
+# Environmental Variables to Configure
 OPENAI_API_BASE='BASE OF YOUR AZURE OPEN AI API'
 OPENAI_API_KEY='YOUR API KEY'
 OPENAI_API_TYPE='azure'
