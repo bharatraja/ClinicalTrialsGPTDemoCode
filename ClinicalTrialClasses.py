@@ -13,6 +13,7 @@ from geopy.geocoders import Nominatim
 import pandas as pd
 from langchain.schema import HumanMessage
 import asyncio
+import os
 
 #region TODOS
 
@@ -110,7 +111,7 @@ class TrialsQuery:
     treatment="" #treament same as intervention
     location=""  #location could be a city but will expand later
     range="100mi"    #default range
-    max_records=5
+    max_records=os.getenv('GPT_DEMO_MAX_RECORDS_TO_RETURN')
     lat=""
     long=""
     studyStatus=""
@@ -312,14 +313,19 @@ class Trials:
 
           #studies for now studies are just nct
           self.studies=list(map (lambda x:  Study(x), j['studies']))
-
+          
+          #modern way to do it is below
+          #tasks=list(asyncio.create_task(s.processStudy())  for s in self.studies)
+          #result=await asyncio.gather(*tasks, return_exceptions=True)
+          
+          
           loop = asyncio.new_event_loop()
           asyncio.set_event_loop(loop)
           tasks=[loop.create_task(s.processStudy())  for s in self.studies]
           group = asyncio.gather(*tasks, return_exceptions=True)
           loop.run_until_complete(group) 
-          
-          
+          loop.close()
+           
           return self.response
       
       except HTTPError as err:

@@ -72,11 +72,6 @@ async def generate_query_output(user_input="", model_to_use=""):
                 stop=None)
             
             return completion.choices[0].message.content
-            #return await (  executeQuery() )
-
-            #st.write("After getting data")
-            #output=await completion.choices[0].message.content
-            #st.write("Before sending back")
         else:
             st.write("No model found")
             output="Sorry I dont know the answer"
