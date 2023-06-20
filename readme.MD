@@ -8,8 +8,8 @@ Another way to do it is to convert the data from CT website to a pandas datafram
 
 # Environmental Variables to Configure the application
 OPENAI_API_BASE='BASE OF YOUR AZURE OPEN AI API'<br>
-OPENAI_API_KEY='YOUR API KEY'
-OPENAI_API_TYPE='azure'
-OPENAI_API_VERSION='2023-03-15-preview'
-OPENAI_API_CHAT_COMPLETION='your azure chat deployment name'
-GPT_DEMO_MAX_RECORDS_TO_RETURN=5
+OPENAI_API_KEY='YOUR API KEY'<br>
+OPENAI_API_TYPE='azure'<br>
+OPENAI_API_VERSION='2023-03-15-preview'<br>
+OPENAI_API_CHAT_COMPLETION='your azure chat deployment name'<br>
+GPT_DEMO_MAX_RECORDS_TO_RETURN=5<br>
