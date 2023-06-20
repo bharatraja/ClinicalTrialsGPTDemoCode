@@ -232,20 +232,22 @@ class Study:
    def __init__(self,raw=""):
        self.raw=raw
 
+   async def processStudy(self):
+
        #process raw
-       if raw != "":
+       if self.raw != "":
            try:
-               self.nctid=raw['protocolSection']['identificationModule']['nctId']
-               self.briefTitle=raw['protocolSection']['identificationModule']['briefTitle']
-               self.leadSponsor=raw['protocolSection']['sponsorCollaboratorsModule']['leadSponsor']['name']
-               self.briefSummary=raw['protocolSection']['descriptionModule']['briefSummary']
-               self.status=raw['protocolSection']['statusModule']['overallStatus']
+               self.nctid=self.raw['protocolSection']['identificationModule']['nctId']
+               self.briefTitle=self.raw['protocolSection']['identificationModule']['briefTitle']
+               self.leadSponsor=self.raw['protocolSection']['sponsorCollaboratorsModule']['leadSponsor']['name']
+               self.briefSummary=self.raw['protocolSection']['descriptionModule']['briefSummary']
+               self.status=self.raw['protocolSection']['statusModule']['overallStatus']
 
                
                
-               self.sex=raw['protocolSection']['eligibilityModule']['sex']
+               self.sex=self.raw['protocolSection']['eligibilityModule']['sex']
                try:
-                   self.phases=",".join(raw["protocolSection"]['designModule']['phases'])
+                   self.phases=",".join(self.raw["protocolSection"]['designModule']['phases'])
                except:
                    self.phases=""
 
@@ -254,43 +256,32 @@ class Study:
                #    self.interventionName=self.collate(raw['protocolSection']['armsInterventionsModule']['interventions'],"name")
                
                self.interventionName=self.collate( self.getValueIfExists(['armsInterventionsModule', 'interventions'],
-                                                 raw['protocolSection']), 'name')
+                                                 self.raw['protocolSection']), 'name')
                
                #Truncate to only 5 locations
                self.locationFacility=self.collate( self.getValueIfExists(['contactsLocationsModule', 'locations'], 
-                                                 raw['protocolSection']), 'facility', 5)
+                                                 self.raw['protocolSection']), 'facility', 5)
                self.locationCity=self.collate(self.getValueIfExists(['contactsLocationsModule','locations'], 
-                                                                    raw['protocolSection']), 'city', 5)
+                                                                    self.raw['protocolSection']), 'city', 5)
                
                
                
                self.primaryOutcomeMeasure=self.collate(self.getValueIfExists(['outcomesModule', 'primaryOutcomes'],
-                                                                   raw['protocolSection']), "measure")
+                                                                   self.raw['protocolSection']), "measure")
                
                #get summary of eligibility criteria
                with st.spinner('GPT is summarizing Inclusion/Exclusion Criteria for these studies...'):
-                self.eligibilityCriteria=raw['protocolSection']['eligibilityModule']['eligibilityCriteria']
-                
-                #the code below summarize the information in an asynch way however it still happens to call everything serially
-                #loop=asyncio.get_event_loop()
-                #loop = asyncio.new_event_loop()
-                #asyncio.set_event_loop(loop)
-                #tsk=loop.create_task(getSummary(self.eligibilityCriteria))
-                #loop.run_until_complete(asyncio.wait([tsk]))
-                #self.eligibilityCriteria=tsk.result()
-                
-                #Instead we truncate the results to 1000 characters
+                self.eligibilityCriteria=self.raw['protocolSection']['eligibilityModule']['eligibilityCriteria']
+                #self.eligibilityCriteria=await getSummary(self.eligibilityCriteria) #Commenting this out as this does the summarization
+                #Taking a short cut to get the first 1000 characters
                 self.eligibilityCriteria=self.eligibilityCriteria[0:1000]
                 #st.write(len(self.eligibilityCriteria))
-
-
+                
+                
            except Exception as e:
                st.write(f"Error in study data {self.nctid}, {e}")
                pass
                #st.write(raw)
-
-
-           
 
 #endregion
 
@@ -321,14 +312,20 @@ class Trials:
 
           #studies for now studies are just nct
           self.studies=list(map (lambda x:  Study(x), j['studies']))
-          #st.write(f"Total Number of studies:{self.totalCount}")
-          #st.write(f"No of Studies pulled={len(self.studies)}")
+
+          loop = asyncio.new_event_loop()
+          asyncio.set_event_loop(loop)
+          tasks=[loop.create_task(s.processStudy())  for s in self.studies]
+          group = asyncio.gather(*tasks, return_exceptions=True)
+          loop.run_until_complete(group) 
+          
+          
           return self.response
       
       except HTTPError as err:
           st.write(f"HTTP error occured in Trials.getStudies(): {err}")
-      except:
-          st.write("Error")
+      except Exception as e:
+          st.write(f"Error {e}")
           return None
       return None #
   

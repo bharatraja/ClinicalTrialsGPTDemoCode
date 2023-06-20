@@ -52,7 +52,7 @@ async def generate_query_output(user_input="", model_to_use=""):
         #st.write(model_to_use)
         if str(model_to_use)=='LANGCHAIN':
             if st.session_state['agent'] is not None:
-                #st.write(st.session_state['messages'])
+                #Below is not awaitable
                 output= st.session_state['agent'].run(st.session_state['messages']) 
         elif str(model_to_use)=='GPT':
             #Azure version of the code
@@ -275,11 +275,19 @@ if not st.session_state['trials'] is None:
                 
                 with st.spinner('GPT Getting answers for you...'):
                     try: 
-                        loop = asyncio.new_event_loop()
-                        asyncio.set_event_loop(loop)
-                        tsk=loop.create_task(generate_query_output(user_input, modelToUse))
-                        loop.run_until_complete(asyncio.wait([tsk]))
-                        output=tsk.result()
+                        
+                        output=asyncio.run(generate_query_output(user_input, modelToUse))
+
+                        #Another way to do this is
+                        #way1
+                        #loop = asyncio.new_event_loop()
+                        #asyncio.set_event_loop(loop)
+                        #coro=generate_query_output(user_input, modelToUse)
+                        #output=loop.run_until_complete(coro)
+                        #way2
+                        #tsk=loop.create_task(generate_query_output(user_input, modelToUse))
+                        #loop.run_until_complete(asyncio.wait([tsk]))
+                        #output=tsk.result()
                         #original synchronus way
                         #output=generate_query_output(user_input, modelToUse)
                     except Exception as e:
