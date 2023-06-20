@@ -1,39 +1,41 @@
+# telnetdemo.py
 import asyncio
+from asyncio import StreamReader, StreamWriter
 
+async def echo(reader: StreamReader, writer: StreamWriter): 
+    print('New connection.')
+    try:
+        while data := await reader.readline():  
+            writer.write(data.upper())  
+            await writer.drain()
+        print('Leaving Connection.')
+    except asyncio.CancelledError:  
+        print('Connection dropped!')
 
-async def function_asyc():
-	for i in range(100000):
-		if i % 20000 == 0:
-			print("Hello, I'm Abhishek")
-			print("GFG is Great")
-			await asyncio.sleep(0.054)
-			
-	return 100
+async def main(host='127.0.0.1', port=8888):
+    server = await asyncio.start_server(echo, host, port) 
+    async with server:
+        await server.serve_forever()
 
-async def function_2():
-	print("\n HELLO WORLD \n")
-	return 0
-
-async def main():
-	i=0
-	f1 = loop.create_task(function_asyc())
-	f2 = loop.create_task(function_2())
-	await asyncio.wait([f1, f2])
-	print(f1.result())
+try:
+    asyncio.run(main())
+except KeyboardInterrupt:
+    print('Bye!')
     
 
-# to run the above function we'll
-# use Event Loops these are low
-# level functions to run async functions
-loop = asyncio.get_event_loop()
-f1=loop.create_task(function_asyc())
-f2=loop.create_task(function_2())
-print("Here 1")
-loop.run_until_complete(asyncio.wait([f1, f2]))
-print("Here 2")
-print(f1.result())
-#loop.run_until_complete(function_asyc())
-loop.close()
 
-# You can also use High Level functions Like:
-# asyncio.run(function_asyc())
+# alltaskscomplete.py
+import asyncio
+
+async def f(delay):
+    await asyncio.sleep(1 / delay)  
+    return delay
+
+loop = asyncio.get_event_loop()
+for i in range(10):
+    loop.create_task(f(i))
+pending = asyncio.all_tasks()
+group = asyncio.gather(*pending, return_exceptions=True)
+results = loop.run_until_complete(group)
+print(f'Results: {results}')
+loop.close()
