@@ -26,6 +26,8 @@ hide_streamlit_style = """
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True) 
 
+
+
 #region TODOS
  #ICON next to Title
  #Do some optimization so we are not querying all the time
@@ -82,6 +84,51 @@ async def generate_query_output(user_input="", model_to_use=""):
 #@st.cache_data breaks the way the controls function
 def getNewData():
     st.session_state['refreshData'] = True
+    st.session_state['condition']=st.session_state.condition_value
+    st.session_state['treatment']=st.session_state.treatment_value
+    st.session_state['location']=st.session_state.location_value
+    st.session_state['other']=st.session_state.other_value
+    st.session_state['studystatus']=st.session_state.studystatus_value
+    st.session_state['model']=modelsAvailable.index(st.session_state.model_value)
+
+def initializeSessionVariables():
+    if 'refreshData' not in st.session_state:
+        st.session_state['refreshData'] = False
+    if 'refreshChat' not in st.session_state:
+        st.session_state['refreshChat'] = False
+    if 'trials' not in st.session_state:
+        st.session_state['trials']=None
+    if 'df' not in st.session_state:
+        st.session_state['df']=None
+    if 'json' not in st.session_state:
+        st.session_state['json']=""
+    if 'noOfStudies' not in st.session_state:
+        st.session_state['noOfStudies']=0
+    if 'recordsShown' not in st.session_state:
+        st.session_state['recordsShown']=0
+    if 'generated' not in st.session_state:
+        st.session_state['generated'] = []
+    if 'past' not in st.session_state:
+        st.session_state['past'] = []
+    if 'messages' not in st.session_state:
+        st.session_state['messages'] =[]
+    if 'agent' not in st.session_state:
+        st.session_state['agent']=None
+    if 'condition' not in st.session_state:
+        st.session_state['condition']=""
+    if 'treatment' not in st.session_state:
+        st.session_state['treatment']=""
+    if 'location' not in st.session_state:
+        st.session_state['location']=""
+    if 'other' not in st.session_state:
+        st.session_state['other']=""
+    if 'studystatus' not in st.session_state:
+        st.session_state['studystatus']=[]
+    if 'model' not in st.session_state:
+        st.session_state['model']=0
+
+
+
 
 #@st.cache_data
 def getNewChatResponse():
@@ -117,46 +164,25 @@ def generate_system_prompt_gpt(data=""):
 #region Begin Main UI Code
 
 
-#region Initialise session state variables
-if 'refreshData' not in st.session_state:
-    st.session_state['refreshData'] = False
-if 'refreshChat' not in st.session_state:
-    st.session_state['refreshChat'] = False
-if 'trials' not in st.session_state:
-    st.session_state['trials']=None
-if 'df' not in st.session_state:
-    st.session_state['df']=None
-if 'json' not in st.session_state:
-    st.session_state['json']=""
-if 'noOfStudies' not in st.session_state:
-    st.session_state['noOfStudies']=0
-if 'recordsShown' not in st.session_state:
-    st.session_state['recordsShown']=0
-if 'generated' not in st.session_state:
-    st.session_state['generated'] = []
-if 'past' not in st.session_state:
-    st.session_state['past'] = []
-if 'messages' not in st.session_state:
-    st.session_state['messages'] =[]
-if 'agent' not in st.session_state:
-    st.session_state['agent']=None
-#endregion
+modelsAvailable=['GPT', 'LANGCHAIN']
+initializeSessionVariables()
 
 
 #region ---- SIDEBAR ----
 st.sidebar.header("Specify what trials you are looking for:")
-condition=st.sidebar.text_input("Condition or Disease",  placeholder="Example: Obesity",on_change=getNewData)
-treatment=st.sidebar.text_input("Treament/Intervention", placeholder="Example: Ozempic", on_change=getNewData)
-location=st.sidebar.text_input("Location City", placeholder="Example: Houston", on_change=getNewData)
-other=st.sidebar.text_input("Other terms", placeholder="Example: Pfizer", on_change=getNewData)
+condition=st.sidebar.text_input("Condition or Disease", value=f"{st.session_state['condition']}", placeholder="Example: Obesity",on_change=getNewData, key="condition_value")
+treatment=st.sidebar.text_input("Treament/Intervention", value=f"{st.session_state['treatment']}", placeholder="Example: Ozempic", on_change=getNewData, key="treatment_value")
+location=st.sidebar.text_input("Location City", value=f"{st.session_state['location']}", placeholder="Example: Houston", on_change=getNewData, key="location_value")
+other=st.sidebar.text_input("Other terms", value=f"{st.session_state['other']}", placeholder="Example: Pfizer", on_change=getNewData, key="other_value")
 
 
 studyStatus=st.sidebar.multiselect("Status", ['ACTIVE_NOT_RECRUITING', 'COMPLETED', 'ENROLLING_BY_INVITATION', 'NOT_YET_RECRUITING',
                                               'RECRUITING', 'SUSPENDED', 'TERMINATED', 'WITHDRAWN'
                                               'AVAILABLE','NO_LONGER_AVAILABLE', 'TEMPORARILY_NOT_AVAILABLE',
                                               'APPROVED_FOR_MARKETING','WITHHELD','UNKNOWN'],
-                                              on_change=getNewData)
-modelToUse=st.sidebar.selectbox("Model", ['GPT', 'LANGCHAIN'], on_change=getNewData)
+                                              default=st.session_state['studystatus'],
+                                               on_change=getNewData, key="studystatus_value")
+modelToUse=st.sidebar.selectbox("Model", modelsAvailable, on_change=getNewData, index=st.session_state['model'], key="model_value")
 
 search=st.sidebar.button("Find and Chat")
 
@@ -164,7 +190,8 @@ search=st.sidebar.button("Find and Chat")
 
 #region-----MAIN WINDOW--------
 
-st.title(":robot_face: Clinical Trials Demo GPT Copilot")
+st.title(":robot_face: Clinical Trials Demo GPT Companion")
+
 
 
 
@@ -240,13 +267,15 @@ if not st.session_state['trials'] is None:
         pass
     #with left_column:    
     with expander:
+
         st.dataframe(data=st.session_state['df'], use_container_width=True, hide_index=True)
+        
         #st.divider()
         #st.write(st.session_state['df'].to_json(orient="records", lines=True))
         #st.write(st.session_state['df'].to_csv(sep='\t'))
     #with right_column:
    
-        #end of UI and start of chat block
+       #end of UI and start of chat block
     st.info("Now that you have data, you can ask questions of it and GPT Companion will answer them for you", icon="ℹ️")
         
     # container for chat history
