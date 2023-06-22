@@ -116,6 +116,7 @@ class TrialsQuery:
     long=""
     studyStatus=""
     other=""
+    study_id="" #to get a study detail
 
     #region api endpoints
     api_base="https://beta.clinicaltrials.gov/api/v2"
@@ -131,10 +132,11 @@ class TrialsQuery:
     api_version="/version"
     #endregion
 
-    def __init__(self, condition="", treatment="", location="", studyStatus=[], other=""):
+    def __init__(self, condition="", treatment="", location="", studyStatus=[], other="",study_id=""):
         self.condition=condition
         self.treatment=treatment
         self.studyStatus=",".join(studyStatus)
+        self.study_id=study_id
 
         self.location=location
         self.other=other
@@ -146,7 +148,14 @@ class TrialsQuery:
             except:
                 #st.write("Error in Location")
                 return
-           
+
+    def getStudyDetailQuery(self,  fields=None)->str:
+        if self.study_id != "":
+            query= self.api_base + self.api_studies_detail + self.study_id
+            return urllib.parse.quote_plus(query,'/:&?=(),')
+        else:
+            return ""
+
 
     def getStudiesQuery(self, fields=None)->str:
 
@@ -211,7 +220,6 @@ class Study:
        except:
            return ""
 
-   
    def getValueIfExists(self, keysArr=[],raw=""):
        if len(keysArr) >1 and len(raw) !=0:
            #if raw[keysArr[0]]:
@@ -232,7 +240,7 @@ class Study:
 
    def __init__(self,raw=""):
        self.raw=raw
-
+      
    async def processStudy(self):
 
        #process raw
@@ -283,6 +291,99 @@ class Study:
                st.write(f"Error in study data {self.nctid}, {e}")
                pass
                #st.write(raw)
+
+class StudyDetail(Study):
+ organizationName=""
+ studyFullName=""
+ startDate=""
+ primaryCompleteDate=""
+ studyFirstSubmitDate=""
+ studyFirstSubmitQcDate=""
+ studyFirstPostDateStruct=""
+ lastUpdateSubmitDate=""
+ lastUpdatePostDateStruct=""
+ responsiblePartyName=""
+ studyType=""
+ studyDesignAllocation=""
+ studyDesignInterventionModel=""
+ studyDesignPrimaryPurpose=""
+ studyDesignMasking=""
+ studyDesignWhoMasked=""
+ studyenrollmentCount=""
+ secondaryOutcomes=""
+ studyInterventionDescription=""
+
+ def __init__(self,raw=""):
+       Study.__init__(self,raw)
+
+
+       
+
+ async def getStudyDetail(self):
+     
+     #call process study
+     try:
+         
+        await self.processStudy()
+       
+        self.organizationName=self.raw['protocolSection']['identificationModule']['organization']['fullName']
+        self.studyFullName=self.raw['protocolSection']['identificationModule']['officialTitle']
+        self.startDate=self.raw['protocolSection']['statusModule']['startDateStruct']['date']
+        self.primaryCompleteDate=self.raw['protocolSection']['statusModule']['primaryCompletionDateStruct']['date']
+        self.studyFirstSubmitDate=self.raw['protocolSection']['statusModule']['studyFirstSubmitDate']
+        self.studyFirstSubmitQcDate=self.raw['protocolSection']['statusModule']['studyFirstSubmitQcDate']
+        self.studyFirstPostDateStruct=self.raw['protocolSection']['statusModule']['studyFirstPostDateStruct']['date']
+        self.lastUpdateSubmitDate=self.raw['protocolSection']['statusModule']['lastUpdateSubmitDate']
+        self.lastUpdatePostDateStruct=self.raw['protocolSection']['statusModule']['lastUpdatePostDateStruct']['date']
+        try:
+            self.studyInterventionDescription=self.collate(self.getValueIfExists(['armsInterventionsModule','interventions'],
+                                                           self.raw['protocolSection']), 'description')
+        except:
+            pass
+
+        try:
+            self.responsiblePartyName=self.raw['protocolSection']['sponsorCollaboratorsModule']['responsibleParty']['investigatorFullName']
+        except:
+            pass
+        self.studyType=self.raw['protocolSection']['designModule']['studyType']
+        self.studyDesignAllocation=self.raw['protocolSection']['designModule']['designInfo']['allocation']
+        self.studyDesignAllocation=self.raw['protocolSection']['designModule']['designInfo']['interventionModel']
+        try:
+            self.studyDesignAllocation=self.raw['protocolSection']['designModule']['designInfo']['primaryPurpose']
+        except:
+            pass
+        self.studyDesignMasking=self.raw['protocolSection']['designModule']['designInfo']['maskingInfo']['masking']
+        try:
+            self.studyDesignWhoMasked=", ".join(self.raw['protocolSection']['designModule']['designInfo']['maskingInfo']['whoMasked'])
+        except:
+            pass
+        self.studyenrollmentCount=self.raw['protocolSection']['designModule']['enrollmentInfo']['count']
+        try:
+            self.secondaryOutcomes=self.raw['protocolSection']['outcomesModule']['secondaryOutcomes']
+        except:
+            pass
+
+     except Exception as e:
+        st.write(f"Error in getStudyDetaily {self.nctid}, {e}")    
+
+ 
+ 
+ def getStudyDetailsJson(self):
+    
+    try:
+      
+        mydict=self.__dict__
+        mydict.pop('raw')
+        return mydict
+        #write meaningful column names
+        #df.columns=[camel_case_split(str(n)) for n in df.columns]
+        #return df
+    except Exception as e:
+        st.write(f"Error in getStudyDetailDF {self.nctid}, {e}")
+        return None
+    
+
+
 
 #endregion
 
