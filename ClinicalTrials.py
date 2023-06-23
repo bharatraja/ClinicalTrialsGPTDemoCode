@@ -58,7 +58,6 @@ async def generate_query_output(user_input="", model_to_use=""):
                 output= st.session_state['agent'].run(st.session_state['messages']) 
         elif str(model_to_use)=='GPT':
             #Azure version of the code
-            #st.write(st.session_state['messages'])
             openai.api_type = "azure"
             openai.api_base = os.getenv('OPENAI_API_BASE')
             openai.api_version = os.getenv('OPENAI_API_VERSION')#"2023-03-15-preview"
@@ -92,6 +91,21 @@ def getNewData():
     st.session_state['model']=modelsAvailable.index(st.session_state.model_value)
 
 def initializeSessionVariables():
+    if 'homePageVisited' not in st.session_state:
+        if 'studyDetailPageVisited' in st.session_state:
+            if 'trials' in st.session_state and st.session_state['trials'] is not None: 
+                if 'refreshData' in st.session_state:
+                    st.session_state['refreshData']=True
+                if 'refreshChat' in st.session_state:
+                    st.session_state['refreshChat']=True
+                if 'messages' in st.session_state:
+                    st.session_state['messages']=[]
+
+            #delete studyDetailPageVisited
+            del st.session_state['studyDetailPageVisited']
+        #create the fact they visited
+        st.session_state['homePageVisited']=True
+
     if 'refreshData' not in st.session_state:
         st.session_state['refreshData'] = False
     if 'refreshChat' not in st.session_state:
@@ -238,6 +252,7 @@ if search or st.session_state['refreshData']:
     st.session_state['recordsShown']=len(trials.studies)
     st.session_state['generated'] = []
     st.session_state['past'] = []
+    st.session_state['messages']=[]
 
     
     if  modelToUse=='LANGCHAIN':
@@ -245,7 +260,9 @@ if search or st.session_state['refreshData']:
         st.session_state['agent']=create_pandas_dataframe_agent(getChatModel(),st.session_state['df']) 
         st.session_state['messages']=generate_system_prompt_langchain()
     else:
+       
         st.session_state['messages']=generate_system_prompt_gpt(st.session_state['json'])
+
         #st.write(f"Message in session state Now={st.session_state['messages']}")
 
 #with left_column:
@@ -285,7 +302,7 @@ if not st.session_state['trials'] is None:
 
     with container:
         with st.form(key='my_form', clear_on_submit=True):
-            user_input = st.text_area("You:", key='input', height=100)
+            user_input = st.text_area("You:", key='input_home', height=100)
             submit_button = st.form_submit_button(label='Send')
             clear_button = st.form_submit_button(label="Clear Conversation")
 
@@ -322,7 +339,7 @@ if not st.session_state['trials'] is None:
                      #Append the out from model
                     st.session_state['generated'].append(output)
                 
-                    st.session_state['messages'].append({"role": "assistant", "content": output})                #st.write(st.session_state['messages'])
+                    st.session_state['messages'].append({"role": "assistant", "content": output})       
                     st.session_state['refreshChat']=False
 
             # reset everything

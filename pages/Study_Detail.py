@@ -39,6 +39,18 @@ async def generate_study_detail_output(user_input=""):
 
 def initializeSessionVariables():
      #region Session State
+    if 'studyDetailPageVisited' not in st.session_state:
+        if 'homePageVisited' in st.session_state:
+            if 'refreshChat' in st.session_state:
+                st.session_state['refreshChat']=True
+
+            #delete studyDetailPageVisited
+            del st.session_state['homePageVisited']
+        
+        #create the fact they visited
+        st.session_state['studyDetailPageVisited']=True
+
+
     if 'messages' not in st.session_state:
         st.session_state['messages'] =[]
     if 'df' not in st.session_state:
