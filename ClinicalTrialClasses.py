@@ -326,15 +326,50 @@ class StudyDetail(Study):
          
         await self.processStudy()
        
-        self.organizationName=self.raw['protocolSection']['identificationModule']['organization']['fullName']
-        self.studyFullName=self.raw['protocolSection']['identificationModule']['officialTitle']
-        self.startDate=self.raw['protocolSection']['statusModule']['startDateStruct']['date']
-        self.primaryCompleteDate=self.raw['protocolSection']['statusModule']['primaryCompletionDateStruct']['date']
-        self.studyFirstSubmitDate=self.raw['protocolSection']['statusModule']['studyFirstSubmitDate']
-        self.studyFirstSubmitQcDate=self.raw['protocolSection']['statusModule']['studyFirstSubmitQcDate']
-        self.studyFirstPostDateStruct=self.raw['protocolSection']['statusModule']['studyFirstPostDateStruct']['date']
-        self.lastUpdateSubmitDate=self.raw['protocolSection']['statusModule']['lastUpdateSubmitDate']
-        self.lastUpdatePostDateStruct=self.raw['protocolSection']['statusModule']['lastUpdatePostDateStruct']['date']
+        try:
+            self.organizationName=self.raw['protocolSection']['identificationModule']['organization']['fullName']
+        except:
+            pass
+        try:
+            self.studyFullName=self.raw['protocolSection']['identificationModule']['officialTitle']
+        except:
+            pass
+        
+        try:
+            self.startDate=self.raw['protocolSection']['statusModule']['startDateStruct']['date']
+        except:
+            pass
+        
+        try:
+            self.primaryCompleteDate=self.raw['protocolSection']['statusModule']['primaryCompletionDateStruct']['date']
+        except:
+            pass
+        
+        try:
+            self.studyFirstSubmitDate=self.raw['protocolSection']['statusModule']['studyFirstSubmitDate']
+        except:
+            pass
+        
+        try:
+            self.studyFirstSubmitQcDate=self.raw['protocolSection']['statusModule']['studyFirstSubmitQcDate']
+        except:
+            pass
+        
+        try:
+            self.studyFirstPostDateStruct=self.raw['protocolSection']['statusModule']['studyFirstPostDateStruct']['date']
+        except:
+            pass
+        
+        try:
+            self.lastUpdateSubmitDate=self.raw['protocolSection']['statusModule']['lastUpdateSubmitDate']
+        except:
+            pass
+        
+        try:
+            self.lastUpdatePostDateStruct=self.raw['protocolSection']['statusModule']['lastUpdatePostDateStruct']['date']
+        except:
+            pass
+        
         try:
             self.studyInterventionDescription=self.collate(self.getValueIfExists(['armsInterventionsModule','interventions'],
                                                            self.raw['protocolSection']), 'description')

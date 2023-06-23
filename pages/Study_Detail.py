@@ -65,23 +65,31 @@ async def main():
             """
     st.markdown(hide_streamlit_style, unsafe_allow_html=True) 
     st.title(":robot_face: Clinical Trials Demo GPT Companion")
-    
-    study=""
 
-    if st.session_state['df'] is not None:
-        with st.sidebar:
+    initializeSessionVariables()
+    
+    
+    with st.sidebar:
+        if st.session_state['df'] is not None:
             study=st.selectbox("Select Study ", 
                                 list(st.session_state['df']['Nctid']),
                                    index=0,
                                    on_change=clearOnChange)
-        st.subheader(f"Study Detail - NCTID ({study})")
-
-    else:
-        with st.sidebar:
-            with st.form(key='study_form', clear_on_submit=True):
-                study=st.text_input("Enter the Study ID (NCTID)", 
-                                placeholder="Example: NCTID")
-                get_study= st.form_submit_button(label='Get Study')
+            
+            
+            
+            st.divider()
+        else: 
+            st.info("Enter a study id and get data", icon="ℹ️")
+            study=st.text_input("Enter the Study ID (NCTID)", 
+                                    placeholder="Example: NCTID")
+            get_study= st.sidebar.button(label='Get Study')
+            
+        
+    #Begin Main Window    
+    st.subheader(f"Study Detail - NCTID ({study})")
+    
+            
     
         #st.write(st.experimental_get_query_params())
         #pages = get_pages("ClnicalTrials.py")
@@ -91,26 +99,17 @@ async def main():
         url=CT.TrialsQuery(study_id=str(study)).getStudyDetailQuery()
         #st.write(url)
         r=CT.getQueryResultsFromCTGov(url)
-        #st.write(r.json()['protocolSection'])
-        studyDetail=CT.StudyDetail(r.json())
-        await studyDetail.getStudyDetail()
-        st.session_state['json']=studyDetail.getStudyDetailsJson()
-        st.session_state['messages']=generate_system_prompt_gpt(st.session_state['json'])
+        if r.status_code == 200:
+            studyDetail=CT.StudyDetail(r.json())
+            await studyDetail.getStudyDetail()
+            st.session_state['json']=studyDetail.getStudyDetailsJson()
+            st.session_state['messages']=generate_system_prompt_gpt(st.session_state['json'])
+        else:
+            study=""
+
         #st.write(st.session_state['messages'])
         
     #main form
-   
-    
-    st.info("Now that you have data, you can ask questions of it and GPT Companion will answer them for you", icon="ℹ️")
-    st.info(f"Study Title: {studyDetail.briefTitle} ")
-    st.info(f"Brief Summary:{studyDetail.briefSummary}")
-        
-    # container for chat history
-    response_container = st.container()
-    # container for text box
-    container = st.container()
-
-
     if st.session_state['refreshChat']:
         st.session_state['generated'] = []
         st.session_state['past'] = []
@@ -119,51 +118,64 @@ async def main():
         st.session_state['refreshChat']=False
 
 
-    with container:
-        with st.form(key='my_form', clear_on_submit=True):
-            user_input = st.text_area("You:", key='input', height=100)
-            submit_button = st.form_submit_button(label='Send')
-            clear_button = st.form_submit_button(label="Clear Conversation")
+    if (st.session_state['df'] is not None) or study != "": 
+        st.info("Now that you have data, you can ask questions of it and GPT Companion will answer them for you", icon="ℹ️")
+        st.info(f"Study Title: {studyDetail.briefTitle} ")
+        st.info(f"Brief Summary:{studyDetail.briefSummary}")
+            
+        # container for chat history
+        response_container = st.container()
+        # container for text box
+        container = st.container()
 
 
-        if submit_button and user_input:
-            with response_container:
-                
 
-                #Append the user input
-                st.session_state['past'].append(user_input)
-                st.session_state['messages'].append({"role": "user", "content": user_input})
 
-                
-                
-                with st.spinner('GPT Getting answers for you...'):
-                    try: 
-                        output=await generate_study_detail_output(user_input)
+        with container:
+            with st.form(key='my_form', clear_on_submit=True):
+                user_input = st.text_area("You:", key='input', height=100)
+                submit_button = st.form_submit_button(label='Send')
+                clear_button = st.form_submit_button(label="Clear Conversation")
 
-                    except Exception as e:
-                        #pass
-                        #st.write(e)
-                        output="Sorry I dont know the answer to that"
 
-                     #Append the out from model
-                    st.session_state['generated'].append(output)
-                
-                    st.session_state['messages'].append({"role": "assistant", "content": output})                #st.write(st.session_state['messages'])
-                    st.session_state['refreshChat']=False
+            if submit_button and user_input:
+                with response_container:
+                    
 
-            # reset everything
-        if clear_button:
-            st.session_state['generated'] = []
-            st.session_state['past'] = []
-            st.session_state['messages'] = []
-            st.session_state['messages']=generate_system_prompt_gpt(st.session_state['json'])
+                    #Append the user input
+                    st.session_state['past'].append(user_input)
+                    st.session_state['messages'].append({"role": "user", "content": user_input})
 
-        if st.session_state['generated']:
-            with response_container:
-                for i in range(len(st.session_state['generated'])):
-                    message(st.session_state["past"][i], is_user=True, key=str(i) + '_user')
-                    message(st.session_state["generated"][i], key=str(i))
-        
+                    
+                    
+                    with st.spinner('GPT Getting answers for you...'):
+                        try: 
+                            output=await generate_study_detail_output(user_input)
+
+                        except Exception as e:
+                            #pass
+                            #st.write(e)
+                            output="Sorry I dont know the answer to that"
+
+                        #Append the out from model
+                        st.session_state['generated'].append(output)
+                    
+                        st.session_state['messages'].append({"role": "assistant", "content": output})                #st.write(st.session_state['messages'])
+                        st.session_state['refreshChat']=False
+
+                # reset everything
+            if clear_button:
+                st.session_state['generated'] = []
+                st.session_state['past'] = []
+                st.session_state['messages'] = []
+                st.session_state['messages']=generate_system_prompt_gpt(st.session_state['json'])
+
+            if st.session_state['generated']:
+                with response_container:
+                    for i in range(len(st.session_state['generated'])):
+                        message(st.session_state["past"][i], is_user=True, key=str(i) + '_user')
+                        message(st.session_state["generated"][i], key=str(i))
+            
 
         
     
