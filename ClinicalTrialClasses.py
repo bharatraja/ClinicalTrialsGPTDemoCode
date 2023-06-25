@@ -281,7 +281,8 @@ class Study:
                #get summary of eligibility criteria
                with st.spinner('GPT is summarizing Inclusion/Exclusion Criteria for these studies...'):
                 self.eligibilityCriteria=self.raw['protocolSection']['eligibilityModule']['eligibilityCriteria']
-                #self.eligibilityCriteria=await getSummary(self.eligibilityCriteria) #Commenting this out as this does the summarization
+                #self.eligibilityCriteria=await asyncio.create_task(
+                #                    getSummary(self.eligibilityCriteria)) #Commenting this out as this does the summarization
                 #Taking a short cut to get the first 1000 characters
                 self.eligibilityCriteria=self.eligibilityCriteria[0:1000]
                 #st.write(len(self.eligibilityCriteria))
@@ -434,7 +435,7 @@ class Trials:
       self.query=query
       self.studies=[]
 
-  def getStudies(self, query:TrialsQuery=None)->None:
+  async def getStudies(self, query:TrialsQuery=None)->None:
       if query != None:
           self.query=query
       
@@ -451,16 +452,16 @@ class Trials:
           self.studies=list(map (lambda x:  Study(x), j['studies']))
           
           #modern way to do it is below
-          #tasks=list(asyncio.create_task(s.processStudy())  for s in self.studies)
-          #result=await asyncio.gather(*tasks, return_exceptions=True)
+          tasks=list(asyncio.create_task(s.processStudy())  for s in self.studies)
+          result=await asyncio.gather(*tasks, return_exceptions=True)
           
           
-          loop = asyncio.new_event_loop()
-          asyncio.set_event_loop(loop)
-          tasks=[loop.create_task(s.processStudy())  for s in self.studies]
-          group = asyncio.gather(*tasks, return_exceptions=True)
-          loop.run_until_complete(group) 
-          loop.close()
+        #   loop = asyncio.new_event_loop()
+        #   asyncio.set_event_loop(loop)
+        #   tasks=[loop.create_task(s.processStudy())  for s in self.studies]
+        #   group = asyncio.gather(*tasks, return_exceptions=True)
+        #   loop.run_until_complete(group) 
+        #   loop.close()
            
           return self.response
       
