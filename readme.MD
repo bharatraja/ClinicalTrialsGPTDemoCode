@@ -16,3 +16,7 @@ OPENAI_API_TYPE='azure'<br>
 OPENAI_API_VERSION='2023-03-15-preview'<br>
 OPENAI_API_CHAT_COMPLETION='your azure chat deployment name'<br>
 GPT_DEMO_MAX_RECORDS_TO_RETURN=5<br>
+
+
+# Requirements.txt 
+Contains all the modules you need

@@ -19,8 +19,9 @@ import os
 
 #endregion
 
-DEBUG=True
+DEBUG=False
 
+#Create and cache the model as a resource
 @st.cache_resource
 def getChatModel():
     model = AzureChatOpenAI(
@@ -32,19 +33,8 @@ def getChatModel():
     )
     return model
 
-# async def getSummary(model=None, raw=""):
-#     if model is not None:
-#         try:
-           
-#             msg=f"Summarize the below:\n\n {raw}"
-#             st.write(msg)
-#             return await (model( [ HumanMessage(content=msg)]).content)
-#             #st.write(output)
-#              #return output
-#         except:
-#              return ""
-   
-    
+# getSummary will provide a summary of long description of clinical trials information. You can do this if
+# we are severely limited by tokens for GPT    
 async def getSummary(raw=""):
     openai.api_type = "azure"
     openai.api_base = os.getenv('OPENAI_API_BASE')
@@ -67,17 +57,15 @@ async def getSummary(raw=""):
             
     return completion.choices[0].message.content
 
-
+# Just executes the query and provides the results (JSON)
 @st.cache_data
 def getQueryResultsFromCTGov(query=""):
     return requests.get(query)
 
-
+# Find the geocode that I end up using in the location search
 @st.cache_data
 def findGeocode(city):
-    # try and catch is used to overcome
-    # the exception thrown by geolocator
-    # using geocodertimedout  
+   
     try:
           
         # Specify the user_agent as your
@@ -88,7 +76,7 @@ def findGeocode(city):
     except:
         return None  
 
-
+@st.cache_data
 def camel_case_split(str):
     #first word will 
     words = [[str[0].upper()]]
@@ -106,11 +94,13 @@ def camel_case_split(str):
 #region CTCode 
 
 #region TrialQuery
+# TrialQuery class build the query for executing the query to get the list of studies needed or a study detail
+# The choices are made in the UI
 class TrialsQuery:
     condition="" #condition
     treatment="" #treament same as intervention
     location=""  #location could be a city but will expand later
-    range="100mi"    #default range
+    range="100mi"    #default range an enhancement can be to provide 
     max_records=os.getenv('GPT_DEMO_MAX_RECORDS_TO_RETURN')
     lat=""
     long=""
@@ -160,6 +150,7 @@ class TrialsQuery:
     def getStudiesQuery(self, fields=None)->str:
 
         #need to urlencode
+        #this fields list cannot have blanks
         if fields is None:
             fields="NCTId,BriefTitle,LeadSponsorName,LocationCity,LocationFacility,InterventionName,PrimaryOutcomeMeasure,BriefSummary,OverallStatus,Phase,Sex,EligibilityCriteria" #cannot have spaces
 
@@ -177,9 +168,6 @@ class TrialsQuery:
         if self.studyStatus != "":
             query+= f"postFilter.overallStatus={self.studyStatus}&"
 
-        #if DEBUG:
-        #    st.write(urllib.parse.quote_plus(query,'/:&?='))
-
         
         return urllib.parse.quote_plus(query,'/:&?=(),')
 
@@ -193,6 +181,9 @@ class TrialsQuery:
 #endregion
 
 #region Study
+#Study class abstracts the concept of study. The only reason I dont send the entire json to GPT is because
+#that JSON can have a lot of unnecassary tokens that drive up the limits of it. I am sure we can do something simpler with GPT itself
+#but i just use the study class to strip and show the fields needed
 class Study:
    raw=""
    nctid=""
@@ -225,13 +216,10 @@ class Study:
            #if raw[keysArr[0]]:
            if keysArr[0] in raw:
                popped=keysArr.pop(0)
-               #st.write(popped)
-               #st.write(keysArr)
                return self.getValueIfExists(keysArr,raw[popped])
            else:
                return ""
        else:
-           #st.write(raw)
            if len(raw) != 0:
                return raw[keysArr[0]]
            else:
@@ -251,48 +239,48 @@ class Study:
                self.leadSponsor=self.raw['protocolSection']['sponsorCollaboratorsModule']['leadSponsor']['name']
                self.briefSummary=self.raw['protocolSection']['descriptionModule']['briefSummary']
                self.status=self.raw['protocolSection']['statusModule']['overallStatus']
-
-               
-               
                self.sex=self.raw['protocolSection']['eligibilityModule']['sex']
+               
                try:
                    self.phases=",".join(self.raw["protocolSection"]['designModule']['phases'])
                except:
                    self.phases=""
 
-               #if 'armsInterventionsModule' in raw['protocolSection']:
-               # if 'interventions' in raw['protocolSection']['armsInterventionsModule']:
-               #    self.interventionName=self.collate(raw['protocolSection']['armsInterventionsModule']['interventions'],"name")
                
                self.interventionName=self.collate( self.getValueIfExists(['armsInterventionsModule', 'interventions'],
                                                  self.raw['protocolSection']), 'name')
                
-               #Truncate to only 5 locations
-               self.locationFacility=self.collate( self.getValueIfExists(['contactsLocationsModule', 'locations'], 
+               #Truncate to only 5 locations to save on tokens
+               try:
+                 self.locationFacility=self.collate( self.getValueIfExists(['contactsLocationsModule', 'locations'], 
                                                  self.raw['protocolSection']), 'facility', 5)
-               self.locationCity=self.collate(self.getValueIfExists(['contactsLocationsModule','locations'], 
+               except:
+                   pass
+               
+               try:
+                self.locationCity=self.collate(self.getValueIfExists(['contactsLocationsModule','locations'], 
                                                                     self.raw['protocolSection']), 'city', 5)
-               
-               
-               
+               except Exception as e:
+                pass
+           
                self.primaryOutcomeMeasure=self.collate(self.getValueIfExists(['outcomesModule', 'primaryOutcomes'],
                                                                    self.raw['protocolSection']), "measure")
                
                #get summary of eligibility criteria
                with st.spinner('GPT is summarizing Inclusion/Exclusion Criteria for these studies...'):
                 self.eligibilityCriteria=self.raw['protocolSection']['eligibilityModule']['eligibilityCriteria']
-                #self.eligibilityCriteria=await asyncio.create_task(
-                #                    getSummary(self.eligibilityCriteria)) #Commenting this out as this does the summarization
+                #self.eligibilityCriteria=await getSummary(self.eligibilityCriteria) #Commenting this out as this does the summarization
                 #Taking a short cut to get the first 1000 characters
                 self.eligibilityCriteria=self.eligibilityCriteria[0:1000]
-                #st.write(len(self.eligibilityCriteria))
                 
                 
            except Exception as e:
+               #You can do much better exception handling and logging here
                st.write(f"Error in study data {self.nctid}, {e}")
                pass
                #st.write(raw)
 
+#Study detail abstracts getting detail information from the study detail query. It extends the Study class
 class StudyDetail(Study):
  organizationName=""
  studyFullName=""
@@ -322,7 +310,7 @@ class StudyDetail(Study):
 
  async def getStudyDetail(self):
      
-     #call process study
+     #call process study you can do much better than i have with these exceptions
      try:
          
         await self.processStudy()
@@ -381,29 +369,53 @@ class StudyDetail(Study):
             self.responsiblePartyName=self.raw['protocolSection']['sponsorCollaboratorsModule']['responsibleParty']['investigatorFullName']
         except:
             pass
-        self.studyType=self.raw['protocolSection']['designModule']['studyType']
-        self.studyDesignAllocation=self.raw['protocolSection']['designModule']['designInfo']['allocation']
-        self.studyDesignAllocation=self.raw['protocolSection']['designModule']['designInfo']['interventionModel']
+
+        try:
+            self.studyType=self.raw['protocolSection']['designModule']['studyType']
+        except:
+            pass
+
+        try:
+            self.studyDesignAllocation=self.raw['protocolSection']['designModule']['designInfo']['allocation']
+        except:
+            pass
+
+        try:
+            self.studyDesignAllocation=self.raw['protocolSection']['designModule']['designInfo']['interventionModel']
+        except:
+            pass
+
+        
         try:
             self.studyDesignAllocation=self.raw['protocolSection']['designModule']['designInfo']['primaryPurpose']
         except:
             pass
-        self.studyDesignMasking=self.raw['protocolSection']['designModule']['designInfo']['maskingInfo']['masking']
+        
+        try:
+         self.studyDesignMasking=self.raw['protocolSection']['designModule']['designInfo']['maskingInfo']['masking']
+        except:
+            pass
+
         try:
             self.studyDesignWhoMasked=", ".join(self.raw['protocolSection']['designModule']['designInfo']['maskingInfo']['whoMasked'])
         except:
             pass
-        self.studyenrollmentCount=self.raw['protocolSection']['designModule']['enrollmentInfo']['count']
+
+        try:
+         self.studyenrollmentCount=self.raw['protocolSection']['designModule']['enrollmentInfo']['count']
+        except:
+            pass
         try:
             self.secondaryOutcomes=self.raw['protocolSection']['outcomesModule']['secondaryOutcomes']
         except:
             pass
 
      except Exception as e:
+        #You can do much better exception handling and logging here
         st.write(f"Error in getStudyDetaily {self.nctid}, {e}")    
 
  
- 
+#Converts the study detail to a JSON to be used in a prompt to GPT
  def getStudyDetailsJson(self):
     
     try:
@@ -411,9 +423,7 @@ class StudyDetail(Study):
         mydict=self.__dict__
         mydict.pop('raw')
         return mydict
-        #write meaningful column names
-        #df.columns=[camel_case_split(str(n)) for n in df.columns]
-        #return df
+    
     except Exception as e:
         st.write(f"Error in getStudyDetailDF {self.nctid}, {e}")
         return None
@@ -424,6 +434,7 @@ class StudyDetail(Study):
 #endregion
 
 #region Trials Class
+#Trials is a collection of studies. It first forms the queries and creates the studies array
 class Trials:
   query:TrialsQuery
   response=None
@@ -451,18 +462,11 @@ class Trials:
           #studies for now studies are just nct
           self.studies=list(map (lambda x:  Study(x), j['studies']))
           
-          #modern way to do it is below
-          tasks=list(asyncio.create_task(s.processStudy())  for s in self.studies)
+          #Process studies async
+          tasks=[s.processStudy() for s in self.studies]
+          #gather wraps the coro in tasks
           result=await asyncio.gather(*tasks, return_exceptions=True)
-          
-          
-        #   loop = asyncio.new_event_loop()
-        #   asyncio.set_event_loop(loop)
-        #   tasks=[loop.create_task(s.processStudy())  for s in self.studies]
-        #   group = asyncio.gather(*tasks, return_exceptions=True)
-        #   loop.run_until_complete(group) 
-        #   loop.close()
-           
+     
           return self.response
       
       except HTTPError as err:

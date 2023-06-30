@@ -100,13 +100,7 @@ async def main():
         
     #Begin Main Window    
     st.subheader(f"Study Detail - NCTID ({study})")
-    
-            
-    
-        #st.write(st.experimental_get_query_params())
-        #pages = get_pages("ClnicalTrials.py")
-        #st.write(pages)
-    
+   
     if study != "":
         url=CT.TrialsQuery(study_id=str(study)).getStudyDetailQuery()
         #st.write(url)
@@ -119,7 +113,6 @@ async def main():
         else:
             study=""
 
-        #st.write(st.session_state['messages'])
         
     #main form
     if st.session_state['refreshChat']:

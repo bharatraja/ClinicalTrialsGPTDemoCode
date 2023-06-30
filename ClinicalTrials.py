@@ -15,14 +15,12 @@ from tenacity import retry, wait_random_exponential, stop_after_attempt
 import ClinicalTrialClasses as CT
 import asyncio
 
-DEBUG=True
+DEBUG=False
 modelsAvailable=['GPT', 'LANGCHAIN']
 
 
 #region TODOS
- #ICON next to Title
- #Do some optimization so we are not querying all the time
- #remove @st.cache_data from findGeocode
+ 
 #endregion
 
 #region Functions
@@ -259,7 +257,7 @@ async def main():
         
         if  modelToUse=='LANGCHAIN':
             #st.write("Here to generate prompt for langchain")
-            st.session_state['agent']=create_pandas_dataframe_agent(getChatModel(),st.session_state['df']) 
+            st.session_state['agent']=create_pandas_dataframe_agent(CT.getChatModel(),st.session_state['df']) 
             st.session_state['messages']=generate_system_prompt_langchain()
         else:
         
@@ -318,21 +316,10 @@ async def main():
                     
                     with st.spinner('GPT Getting answers for you...'):
                         try: 
-                            
+                            #this is still a blocking call. In the future if we do many queries we can do the gather pattern
                             output=await asyncio.create_task(generate_query_output(user_input, str(modelToUse)))
 
-                            #Another way to do this is
-                            #way1
-                            #loop = asyncio.new_event_loop()
-                            #asyncio.set_event_loop(loop)
-                            #coro=generate_query_output(user_input, modelToUse)
-                            #output=loop.run_until_complete(coro)
-                            #way2
-                            #tsk=loop.create_task(generate_query_output(user_input, modelToUse))
-                            #loop.run_until_complete(asyncio.wait([tsk]))
-                            #output=tsk.result()
-                            #original synchronus way
-                            #output=generate_query_output(user_input, modelToUse)
+                           
                         except Exception as e:
                             #pass
                             #st.write(e)
@@ -361,10 +348,6 @@ async def main():
 
             
     #end of UI for pulling data from clinicaltrials.gov
-
-
-
-    #st.write(findGeocode('oak park, illinois').latitude) 
     #endregion----End Main Window
     #endregion -- End UI Code
 
