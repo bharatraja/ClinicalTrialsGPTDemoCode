@@ -257,7 +257,7 @@ async def main():
         
         if  modelToUse=='LANGCHAIN':
             #st.write("Here to generate prompt for langchain")
-            st.session_state['agent']=create_pandas_dataframe_agent(CT.getChatModel(),st.session_state['df']) 
+            st.session_state['agent']=create_pandas_dataframe_agent(getChatModel(),st.session_state['df']) 
             st.session_state['messages']=generate_system_prompt_langchain()
         else:
         
