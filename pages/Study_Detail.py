@@ -1,11 +1,13 @@
 import streamlit as st
 from streamlit.source_util import get_pages
 import ClinicalTrialClasses as CT
+import CTUtils as CTU
 import asyncio
 from tenacity import retry, wait_random_exponential, stop_after_attempt 
 import openai
 from streamlit_chat import message
 import os
+import logging
 
 
 def clearOnChange():
@@ -78,6 +80,7 @@ async def main():
     st.markdown(hide_streamlit_style, unsafe_allow_html=True) 
     st.title(":robot_face: Clinical Trials Demo GPT Companion")
 
+
     initializeSessionVariables()
     
     
@@ -104,7 +107,7 @@ async def main():
     if study != "":
         url=CT.TrialsQuery(study_id=str(study)).getStudyDetailQuery()
         #st.write(url)
-        r=CT.getQueryResultsFromCTGov(url)
+        r=CTU.getQueryResultsFromCTGov(url)
         if r.status_code == 200:
             studyDetail=CT.StudyDetail(r.json())
             await studyDetail.getStudyDetail()
@@ -127,7 +130,7 @@ async def main():
         st.info("Now that you have data, you can ask questions of it and GPT Companion will answer them for you", icon="ℹ️")
         st.info(f"Study Title: {studyDetail.briefTitle} ")
         st.info(f"Brief Summary:{studyDetail.briefSummary}")
-        with st.expander(f"No of PubMed Aticles: {len(studyDetail.pubmedArticles)}", expanded=False):
+        with st.expander(f"No of PubMed Articles: {len(studyDetail.pubmedArticles)}", expanded=False):
             for article in studyDetail.pubmedArticles:
                 st.info(f"""Article Title: {article['title']} \n\n Article PubMed ID: {article['pubmed_id']}\n\n Results: - {article['results']} \n\n Go to Article: https://pubmed.ncbi.nlm.nih.gov/{article['pubmed_id']}/""")
                             

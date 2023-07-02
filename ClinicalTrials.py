@@ -14,6 +14,8 @@ from langchain.agents import create_pandas_dataframe_agent
 from tenacity import retry, wait_random_exponential, stop_after_attempt 
 import ClinicalTrialClasses as CT
 import asyncio
+import logging
+import CTUtils as CTU
 
 DEBUG=False
 modelsAvailable=['GPT', 'LANGCHAIN']
@@ -24,17 +26,6 @@ modelsAvailable=['GPT', 'LANGCHAIN']
 #endregion
 
 #region Functions
-@st.cache_resource
-def getChatModel():
-    model = AzureChatOpenAI(
-        openai_api_base=os.getenv('OPENAI_API_BASE'),
-        openai_api_version=os.getenv('OPENAI_API_VERSION'),#"2023-03-15-preview",
-        deployment_name=os.getenv('OPENAI_API_CHAT_COMPLETION'),
-        openai_api_key=os.getenv('OPENAI_API_KEY'),
-        openai_api_type = "azure",
-    )
-    return model
-
 
 @retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(3))
 async def generate_query_output(user_input="", model_to_use=""):
@@ -176,8 +167,11 @@ async def main():
     st.markdown(hide_streamlit_style, unsafe_allow_html=True) 
 
 
-
-
+    #Init Logger
+    CTU.init_logger()
+   
+    
+    
     #region Begin Main UI Code
     initializeSessionVariables()
 
@@ -257,7 +251,7 @@ async def main():
         
         if  modelToUse=='LANGCHAIN':
             #st.write("Here to generate prompt for langchain")
-            st.session_state['agent']=create_pandas_dataframe_agent(getChatModel(),st.session_state['df']) 
+            st.session_state['agent']=create_pandas_dataframe_agent(CTU.getChatModel(),st.session_state['df']) 
             st.session_state['messages']=generate_system_prompt_langchain()
         else:
         

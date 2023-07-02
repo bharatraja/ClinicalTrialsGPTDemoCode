@@ -9,37 +9,18 @@ from requests.exceptions import HTTPError
 import json
 import urllib.parse
 import os
-from geopy.geocoders import Nominatim
 import pandas as pd
 from langchain.schema import HumanMessage
 import asyncio
 import os
-from pymed import PubMed
-
+import logging
+import CTUtils as CTU
 #region TODOS
 
 #endregion
 
 DEBUG=False
 
-#get pubmed articles that match the study criteria
-async def getPubmedArticles(studyID=""):
-    pubmed = PubMed(tool="MyTool", email="test@clinicaltrialsgpt.com")
-    results = pubmed.query(f"{studyID} [si]", max_results=5 )
-    return results
-
-
-#Create and cache the model as a resource
-@st.cache_resource
-def getChatModel():
-    model = AzureChatOpenAI(
-        openai_api_base=os.getenv('OPENAI_API_BASE'),
-        openai_api_version="2023-03-15-preview",
-        deployment_name=os.getenv('OPENAI_API_CHAT_COMPLETION'),
-        openai_api_key=os.getenv('OPENAI_API_KEY'),
-        openai_api_type = "azure",
-    )
-    return model
 
 # getSummary will provide a summary of long description of clinical trials information. You can do this if
 # we are severely limited by tokens for GPT    
@@ -65,24 +46,7 @@ async def getSummary(raw=""):
             
     return completion.choices[0].message.content
 
-# Just executes the query and provides the results (JSON)
-@st.cache_data
-def getQueryResultsFromCTGov(query=""):
-    return requests.get(query)
 
-# Find the geocode that I end up using in the location search
-@st.cache_data
-def findGeocode(city):
-   
-    try:
-          
-        # Specify the user_agent as your
-        # app name it should not be none
-        geolocator = Nominatim(user_agent="BharatTestApp")
-        return geolocator.geocode(city)
-      
-    except:
-        return None  
 
 
 #@st.cache_data
@@ -140,7 +104,7 @@ class TrialsQuery:
         self.location=location
         self.other=other
         if location != "":
-            gc=findGeocode(location)
+            gc=CTU.findGeocode(location)
             try:
                 self.lat=str(gc.latitude)
                 self.long=str(gc.longitude)
@@ -326,7 +290,7 @@ class StudyDetail(Study):
         await self.processStudy()
 
         #start the task to get pubmed articles
-        getPubmed=asyncio.create_task(getPubmedArticles(self.nctid))
+        getPubmed=asyncio.create_task(CTU.getPubmedArticles(self.nctid))
        
         try:
             self.organizationName=self.raw['protocolSection']['identificationModule']['organization']['fullName']
@@ -477,7 +441,7 @@ class Trials:
       
       try:
           url=self.query.getStudiesQuery()
-          r=getQueryResultsFromCTGov(url)
+          r=CTU.getQueryResultsFromCTGov(url)
           self.response=r
 
           self.raw_json=j=r.json()
@@ -518,9 +482,6 @@ class Trials:
     df=self.getStudiesAsDF()
     if df is not None:
         return df.to_json()
-   
-      
-
 #endregion
 
 #endregion
