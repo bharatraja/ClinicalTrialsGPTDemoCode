@@ -8,3 +8,4 @@ pandas
 geopy
 langchain
 tabulate
+pymed
