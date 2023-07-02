@@ -54,7 +54,6 @@ async def generate_query_output(user_input="", model_to_use=""):
             
             return completion.choices[0].message.content
         else:
-            st.write("No model found")
             output="Sorry I dont know the answer"
         return output          
   

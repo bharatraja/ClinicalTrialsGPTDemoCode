@@ -25,28 +25,30 @@ DEBUG=False
 # getSummary will provide a summary of long description of clinical trials information. You can do this if
 # we are severely limited by tokens for GPT    
 async def getSummary(raw=""):
-    openai.api_type = "azure"
-    openai.api_base = os.getenv('OPENAI_API_BASE')
-    openai.api_version = os.getenv('OPENAI_API_VERSION')#"2023-03-15-preview"
-    openai.api_key = os.getenv("OPENAI_API_KEY")
-    msg=[{"role":"system","content": "You are an AI assistant that summarizes Clinical Trials Study  eligibility Criteria"},
-          {"role": "user", "content": f"""Please summarize the below  
-                {raw}                
-                """}]
+    try:
+        openai.api_type = "azure"
+        openai.api_base = os.getenv('OPENAI_API_BASE')
+        openai.api_version = os.getenv('OPENAI_API_VERSION')#"2023-03-15-preview"
+        openai.api_key = os.getenv("OPENAI_API_KEY")
+        msg=[{"role":"system","content": "You are an AI assistant that summarizes Clinical Trials Study  eligibility Criteria"},
+            {"role": "user", "content": f"""Please summarize the below  
+                    {raw}                
+                    """}]
 
-    completion= await openai.ChatCompletion.acreate(
-               engine=os.getenv('OPENAI_API_CHAT_COMPLETION'),
-                messages = msg,
-                temperature=0.7,
-                #max_tokens=800,
-                top_p=0.95,
-                frequency_penalty=0,
-                presence_penalty=0,
-                stop=None)
-            
-    return completion.choices[0].message.content
-
-
+        completion= await openai.ChatCompletion.acreate(
+                engine=os.getenv('OPENAI_API_CHAT_COMPLETION'),
+                    messages = msg,
+                    temperature=0.7,
+                    #max_tokens=800,
+                    top_p=0.95,
+                    frequency_penalty=0,
+                    presence_penalty=0,
+                    stop=None)
+                
+        return completion.choices[0].message.content
+    except Exception as e:
+        CTU.logAppInfo("(getSummary):",f"Error in getting summary ","ERROR" , e)
+        return None
 
 
 #@st.cache_data
@@ -105,13 +107,10 @@ class TrialsQuery:
         self.other=other
         if location != "":
             gc=CTU.findGeocode(location)
-            try:
+            if gc is not None:
                 self.lat=str(gc.latitude)
                 self.long=str(gc.longitude)
-            except:
-                #st.write("Error in Location")
-                return
-
+          
     def getStudyDetailQuery(self,  fields=None)->str:
         if self.study_id != "":
             query= self.api_base + self.api_studies_detail + self.study_id
@@ -249,10 +248,8 @@ class Study:
                 
            except Exception as e:
                #You can do much better exception handling and logging here
-               st.write(f"Error in study data {self.nctid}, {e}")
-               pass
-               #st.write(raw)
-
+               CTU.logAppInfo("(processStudy)", f"Error in study data {self.nctid}", "ERROR", e)
+               
 #Study detail abstracts getting detail information from the study detail query. It extends the Study class
 class StudyDetail(Study):
  organizationName=""
@@ -400,8 +397,9 @@ class StudyDetail(Study):
 
 
      except Exception as e:
-        #You can do much better exception handling and logging here
-        st.write(f"Error in getStudyDetaily {self.nctid}, {e}")    
+        CTU.logAppInfo("(getStudyDetail)", f"Error in study data {self.nctid}", "ERROR", e)
+   
+       
 
  
 #Converts the study detail to a JSON to be used in a prompt to GPT
@@ -414,7 +412,7 @@ class StudyDetail(Study):
         return mydict
     
     except Exception as e:
-        st.write(f"Error in getStudyDetailDF {self.nctid}, {e}")
+        CTU.logAppInfo("(getStudyDetailsJson)", f"Error in study data {self.nctid}", "ERROR", e)
         return None
     
 
