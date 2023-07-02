@@ -127,6 +127,10 @@ async def main():
         st.info("Now that you have data, you can ask questions of it and GPT Companion will answer them for you", icon="ℹ️")
         st.info(f"Study Title: {studyDetail.briefTitle} ")
         st.info(f"Brief Summary:{studyDetail.briefSummary}")
+        with st.expander(f"No of PubMed Aticles: {len(studyDetail.pubmedArticles)}", expanded=False):
+            for article in studyDetail.pubmedArticles:
+                st.info(f"""Article Title: {article['title']} \n\n Article PubMed ID: {article['pubmed_id']}\n\n Results: - {article['results']} \n\n Go to Article: https://pubmed.ncbi.nlm.nih.gov/{article['pubmed_id']}/""")
+                            
             
         # container for chat history
         response_container = st.container()

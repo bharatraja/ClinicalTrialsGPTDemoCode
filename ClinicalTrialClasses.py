@@ -14,12 +14,20 @@ import pandas as pd
 from langchain.schema import HumanMessage
 import asyncio
 import os
+from pymed import PubMed
 
 #region TODOS
 
 #endregion
 
 DEBUG=False
+
+#get pubmed articles that match the study criteria
+async def getPubmedArticles(studyID=""):
+    pubmed = PubMed(tool="MyTool", email="test@clinicaltrialsgpt.com")
+    results = pubmed.query(f"{studyID} [si]", max_results=5 )
+    return results
+
 
 #Create and cache the model as a resource
 @st.cache_resource
@@ -302,6 +310,7 @@ class StudyDetail(Study):
  studyenrollmentCount=""
  secondaryOutcomes=""
  studyInterventionDescription=""
+ pubmedArticles=None
 
  def __init__(self,raw=""):
        Study.__init__(self,raw)
@@ -315,6 +324,9 @@ class StudyDetail(Study):
      try:
          
         await self.processStudy()
+
+        #start the task to get pubmed articles
+        getPubmed=asyncio.create_task(getPubmedArticles(self.nctid))
        
         try:
             self.organizationName=self.raw['protocolSection']['identificationModule']['organization']['fullName']
@@ -410,6 +422,18 @@ class StudyDetail(Study):
             self.secondaryOutcomes=self.raw['protocolSection']['outcomesModule']['secondaryOutcomes']
         except:
             pass
+
+        #wait for the pubmed articles to be retrieved
+        tmpArticles=await getPubmed
+        self.pubmedArticles=[t.toDict() for t in tmpArticles]
+        #self.pubmedArticles=self.pubmedArticles[0:5]
+        keys=['xml', 'doi','authors', 'keywords']
+        for r in self.pubmedArticles:
+            for k in keys:
+                del r[k]
+            r['pubmed_id']=r['pubmed_id'].split('\n')[0]
+
+
 
      except Exception as e:
         #You can do much better exception handling and logging here
