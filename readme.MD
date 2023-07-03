@@ -8,7 +8,6 @@ The first way is to use GPT directly and ask questions of the data. To do this, 
 Another way to do it is to convert the data from CT website to a pandas dataframe and use the dataframe to create a Langchain Pandas dataframe agent. Then the agent uses GPT in the backend.
 
 
-
 # Environmental Variables to Configure the application
 OPENAI_API_BASE='BASE OF YOUR AZURE OPEN AI API'<br>
 OPENAI_API_KEY='YOUR API KEY'<br>
@@ -19,4 +18,4 @@ GPT_DEMO_MAX_RECORDS_TO_RETURN=5<br>
 
 
 # Requirements.txt 
-Contains all the modules you need
+Contains all the modules you need to install

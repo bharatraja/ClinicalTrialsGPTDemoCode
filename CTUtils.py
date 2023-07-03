@@ -12,6 +12,7 @@ from pymed import PubMed
 import asyncio
 import requests
 import logging
+from tenacity import retry, wait_random_exponential, stop_after_attempt 
 
 
 
@@ -81,3 +82,36 @@ async def getPubmedArticles(studyID=""):
 @st.cache_data
 def getQueryResultsFromCTGov(query=""):
     return requests.get(query)
+
+# Gets response from GPT
+@retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(3))
+async def getResponseFromGPT(input=""):
+    try:
+        openai.api_type = "azure"
+        openai.api_base = os.getenv('OPENAI_API_BASE')
+        openai.api_version = os.getenv('OPENAI_API_VERSION')#"2023-03-15-preview"
+        openai.api_key = os.getenv("OPENAI_API_KEY")
+        completion= await openai.ChatCompletion.acreate(
+                engine=os.getenv('OPENAI_API_CHAT_COMPLETION'),
+                    messages = input,
+                    temperature=0.7,
+                    #max_tokens=800,
+                    top_p=0.95,
+                    frequency_penalty=0,
+                    presence_penalty=0,
+                    stop=None)
+                
+        return completion.choices[0].message.content
+    except Exception as e:
+        logAppInfo("(getResponseFromGPT):",f"Error in getting response from GPT ","ERROR" , e)
+        return None
+
+def hideStreamlitStyle():
+    hide_streamlit_style = """
+                <style>
+                #MainMenu {visibility: hidden;}
+                footer {visibility: hidden;}
+                </style>
+                """
+    st.markdown(hide_streamlit_style, unsafe_allow_html=True) 
+

@@ -3,7 +3,6 @@ from streamlit.source_util import get_pages
 import ClinicalTrialClasses as CT
 import CTUtils as CTU
 import asyncio
-from tenacity import retry, wait_random_exponential, stop_after_attempt 
 import openai
 from streamlit_chat import message
 import os
@@ -20,25 +19,10 @@ def generate_system_prompt_gpt(data=""):
                 {data}                
                 """}]
 
-@retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(3))
-async def generate_study_detail_output(user_input=""):
-    
-    openai.api_type = "azure"
-    openai.api_base = os.getenv('OPENAI_API_BASE')
-    openai.api_version = os.getenv('OPENAI_API_VERSION')#"2023-03-15-preview"
-    openai.api_key = os.getenv("OPENAI_API_KEY")
-    completion= await openai.ChatCompletion.acreate(
-               engine=os.getenv('OPENAI_API_CHAT_COMPLETION'),
-                messages = st.session_state['messages'],
-                temperature=0.7,
-                #max_tokens=800,
-                top_p=0.95,
-                frequency_penalty=0,
-                presence_penalty=0,
-                stop=None)
-            
-    return completion.choices[0].message.content
 
+async def generate_study_detail_output(user_input=""):
+    return await CTU.getResponseFromGPT(st.session_state['messages'])
+    
 def initializeSessionVariables():
      #region Session State
     if 'studyDetailPageVisited' not in st.session_state:
@@ -71,13 +55,7 @@ def initializeSessionVariables():
           
 async def main():
     st.set_page_config(page_title="Clinical Trials Companion",  page_icon=":robot_face:", layout="wide")
-    hide_streamlit_style = """
-            <style>
-            #MainMenu {visibility: hidden;}
-            footer {visibility: hidden;}
-            </style>
-            """
-    st.markdown(hide_streamlit_style, unsafe_allow_html=True) 
+    CTU.hideStreamlitStyle()
     st.title(":robot_face: Clinical Trials Demo GPT Companion")
 
 
@@ -188,9 +166,6 @@ async def main():
                         message(st.session_state["past"][i], is_user=True, key=str(i) + '_user')
                         message(st.session_state["generated"][i], key=str(i))
             
-
-        
-    
 
 if __name__=="__main__":
     asyncio.run(main())

@@ -30,6 +30,7 @@ modelsAvailable=['GPT', 'LANGCHAIN']
 @retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(3))
 async def generate_query_output(user_input="", model_to_use=""):
     #append user input to history and messages
+    output=""
     if user_input != "":
         #st.write(model_to_use)
         if str(model_to_use)=='LANGCHAIN':
@@ -38,21 +39,8 @@ async def generate_query_output(user_input="", model_to_use=""):
                 output= st.session_state['agent'].run(st.session_state['messages']) 
         elif str(model_to_use)=='GPT':
             #Azure version of the code
-            openai.api_type = "azure"
-            openai.api_base = os.getenv('OPENAI_API_BASE')
-            openai.api_version = os.getenv('OPENAI_API_VERSION')#"2023-03-15-preview"
-            openai.api_key = os.getenv("OPENAI_API_KEY")
-            completion= await openai.ChatCompletion.acreate(
-               engine=os.getenv('OPENAI_API_CHAT_COMPLETION'),
-                messages = st.session_state['messages'],
-                temperature=0.7,
-                #max_tokens=800,
-                top_p=0.95,
-                frequency_penalty=0,
-                presence_penalty=0,
-                stop=None)
+             output= await CTU.getResponseFromGPT(st.session_state['messages'])
             
-            return completion.choices[0].message.content
         else:
             output="Sorry I dont know the answer"
         return output          
@@ -157,14 +145,8 @@ def generate_system_prompt_gpt(data=""):
 async def main():
 
     st.set_page_config(page_title="Clinical Trials Companion",  page_icon=":robot_face:", layout="wide")
-    hide_streamlit_style = """
-                <style>
-                #MainMenu {visibility: hidden;}
-                footer {visibility: hidden;}
-                </style>
-                """
-    st.markdown(hide_streamlit_style, unsafe_allow_html=True) 
-
+    CTU.hideStreamlitStyle()
+    
 
     #Init Logger
     CTU.init_logger()
