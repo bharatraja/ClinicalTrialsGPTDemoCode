@@ -452,8 +452,10 @@ class Trials:
           #Process studies async
           tasks=[s.processStudy() for s in self.studies]
           #gather wraps the coro in tasks
-          result=await asyncio.gather(*tasks, return_exceptions=True)
-     
+          #result=await asyncio.gather(*tasks, return_exceptions=True)
+          for fin in asyncio.as_completed(tasks):
+                await fin
+
           return self.response
       
       except HTTPError as err:
