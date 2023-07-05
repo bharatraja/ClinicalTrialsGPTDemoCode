@@ -453,15 +453,21 @@ class Trials:
           tasks=[s.processStudy() for s in self.studies]
           #gather wraps the coro in tasks
           #result=await asyncio.gather(*tasks, return_exceptions=True)
-          for fin in asyncio.as_completed(tasks):
-                await fin
-
+          for fin in asyncio.as_completed(tasks, timeout=10):
+                try:
+                    result=await fin
+                except asyncio.TimeoutError as e:
+                    
+                    CTU.logAppInfo("(getStudies)", f"Timeout error in study data", "ERROR", e)
+                except Exception as e:
+                    CTU.logAppInfo("(getStudies)", f"Error in study data ", "ERROR", e)
+                    
           return self.response
       
       except HTTPError as err:
-          st.write(f"HTTP error occured in Trials.getStudies(): {err}")
+          CTU.logAppInfo("(getStudies)", f"HTTP error occured in Trials.getStudies(): ", "ERROR", err)
       except Exception as e:
-          st.write(f"Error {e}")
+          CTU.logAppInfo("(getStudies)", f"Generic Error 123  occured in Trials.getStudies(): ", "ERROR", e)
           return None
       return None #
   
