@@ -78,7 +78,14 @@ async def getPubmedArticles(studyID=""):
     results = pubmed.query(f"{studyID} [si]", max_results=5 )
     return results
 
-# Just executes the query and provides the results (JSON)
+# Alternalte version of that can be used to get results of multuple queries
+#@st.cache_data
+# async def getQueryResultsFromCTGov(query=""):
+#     tsk=[asyncio.to_thread(requests.get,query)]
+#     rslt=await asyncio.gather(*tsk)
+#     return rslt[0]
+#     
+
 @st.cache_data
 def getQueryResultsFromCTGov(query=""):
     return requests.get(query)

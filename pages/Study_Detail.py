@@ -110,16 +110,13 @@ async def main():
         st.info(f"Brief Summary:{studyDetail.briefSummary}")
         with st.expander(f"No of PubMed Articles: {len(studyDetail.pubmedArticles)}", expanded=False):
             for article in studyDetail.pubmedArticles:
-                st.info(f"""Article Title: {article['title']} \n\n Article PubMed ID: {article['pubmed_id']}\n\n Results: - {article['results']} \n\n Go to Article: https://pubmed.ncbi.nlm.nih.gov/{article['pubmed_id']}/""")
+                st.info(f"""Article Title: {article['title']} \n\n Article PubMed ID: {article['pubmed_id']}\n\n Pub Date: {article['publication_date']}\n\nAbstract:- {article['abstract']} \n\nMethods:- {article['methods']} \n\n Results: - {article['results']} \n\n Conclusions: - {article['conclusions']} \n\n Go to Article: https://pubmed.ncbi.nlm.nih.gov/{article['pubmed_id']}/""")
                             
             
         # container for chat history
         response_container = st.container()
         # container for text box
         container = st.container()
-
-
-
 
         with container:
             with st.form(key='my_form', clear_on_submit=True):
