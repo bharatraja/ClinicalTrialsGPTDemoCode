@@ -108,10 +108,11 @@ async def main():
         st.info("Now that you have data, you can ask questions of it and GPT Companion will answer them for you", icon="ℹ️")
         st.info(f"Study Title: {studyDetail.briefTitle} ")
         st.info(f"Brief Summary:{studyDetail.briefSummary}")
-        with st.expander(f"No of PubMed Articles: {len(studyDetail.pubmedArticles)}", expanded=False):
-            for article in studyDetail.pubmedArticles:
-                st.info(f"""Article Title: {article['title']} \n\n Article PubMed ID: {article['pubmed_id']}\n\n Pub Date: {article['publication_date']}\n\nAbstract:- {article['abstract']} \n\nMethods:- {article['methods']} \n\n Results: - {article['results']} \n\n Conclusions: - {article['conclusions']} \n\n Go to Article: https://pubmed.ncbi.nlm.nih.gov/{article['pubmed_id']}/""")
-                            
+        if studyDetail.pubmedArticles is not None:
+            with st.expander(f"No of PubMed Articles: {len(studyDetail.pubmedArticles)}", expanded=False):
+                for article in studyDetail.pubmedArticles:
+                    st.info(f"""Article Title: {article['title']} \n\n Article PubMed ID: {article['pubmed_id']}\n\n Pub Date: {article['publication_date']}\n\nAbstract:- {article['abstract']} \n\nMethods:- {article['methods']} \n\n Results: - {article['results']} \n\n Conclusions: - {article['conclusions']} \n\n Go to Article: https://pubmed.ncbi.nlm.nih.gov/{article['pubmed_id']}/""")
+                                
             
         # container for chat history
         response_container = st.container()

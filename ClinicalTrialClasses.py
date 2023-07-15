@@ -490,4 +490,18 @@ class Trials:
         return df.to_json()
 #endregion
 
+
+#region Patients Class
+class Patient():
+    def init(self, id=""):
+        self.id=id
+
+    async def getAllPatients(self):
+        r=CTU.getAllPatients()
+        return r
+        
+    async def getPatientDetails(self, id):
+        r=CTU.getPatientDetails(id)
+        return r
+       
 #endregion

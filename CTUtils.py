@@ -90,9 +90,26 @@ async def getPubmedArticles(studyID=""):
 def getQueryResultsFromCTGov(query=""):
     return requests.get(query)
 
+@st.cache_data
+def getAllPatients():
+    try:
+        return requests.get("http://127.0.0.1:8080/patients")
+    except Exception as e:
+        logAppInfo("(getAllPatients):",f"Error in getting all patients ","ERROR" , e)
+        return None
+    
+@st.cache_data
+def getPatientDetails(patientID=""):
+    try:
+        return requests.get(f"http://127.0.0.1:8080/patients/{patientID}")
+    except Exception as e:
+        logAppInfo("(getPatientDetail):",f"Error in getting patient {patientID} ","ERROR" , e)
+        return None
+    
+
 # Gets response from GPT
 @retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(3))
-async def getResponseFromGPT(input=""):
+async def getResponseFromGPT(input=[""]):
     try:
         openai.api_type = "azure"
         openai.api_base = os.getenv('OPENAI_API_BASE')
