@@ -11,8 +11,7 @@ import logging
 
 def clearOnChange():
     st.session_state['refreshChat'] = True
-    
-    
+
 
 def generate_system_prompt_gpt(data=""):
     return [{"role":"system","content": f"""You are an AI assistant that answers questions on Clinical trials studies information provided as json below:
@@ -21,7 +20,7 @@ def generate_system_prompt_gpt(data=""):
 
 
 async def generate_study_detail_output(user_input=""):
-    return await CTU.getResponseFromGPT(st.session_state['messages'])
+    return await CTU.getResponseFromGPT(st.session_state['messages_study_detail'])
     
 def initializeSessionVariables():
      #region Session State
@@ -36,17 +35,16 @@ def initializeSessionVariables():
         #create the fact they visited
         st.session_state['studyDetailPageVisited']=True
 
-
-    if 'messages' not in st.session_state:
-        st.session_state['messages'] =[]
+    if 'messages_study_detail' not in st.session_state:
+        st.session_state['messages_study_detail'] =[]
     if 'df' not in st.session_state:
         st.session_state['df']=None
     if 'json' not in st.session_state:
         st.session_state['json']=None
-    if 'generated' not in st.session_state:
-        st.session_state['generated'] = []
-    if 'past' not in st.session_state:
-        st.session_state['past'] = []
+    if 'generated_study_detail' not in st.session_state:
+        st.session_state['generated_study_detail'] = []
+    if 'past_study_detail' not in st.session_state:
+        st.session_state['past_study_detail'] = []
     if 'refreshChat' not in st.session_state:
         st.session_state['refreshChat'] = False
     #endregion
@@ -82,35 +80,42 @@ async def main():
     #Begin Main Window    
     st.subheader(f"Study Detail - NCTID ({study})")
    
-    if study != "":
+    # if study != "":
+    #     url=CT.TrialsQuery(study_id=str(study)).getStudyDetailQuery()
+    #     #st.write(url)
+    #     r=CTU.getQueryResultsFromCTGov(url)
+    #     if r.status_code == 200:
+    #         studyDetail=CT.StudyDetail(r.json())
+    #         await studyDetail.getStudyDetail()
+    #         st.session_state['json']=studyDetail.getStudyDetailsJson()
+    #         st.session_state['messages_study_detail']=generate_system_prompt_gpt(st.session_state['json'])
+    #     else:
+    #         study=""
+
+        
+    #main form
+    if st.session_state['refreshChat']:
+        st.session_state['generated_study_detail'] = []
+        st.session_state['past_study_detail'] = []
+        st.session_state['messages_study_detail'] = []
         url=CT.TrialsQuery(study_id=str(study)).getStudyDetailQuery()
-        #st.write(url)
         r=CTU.getQueryResultsFromCTGov(url)
         if r.status_code == 200:
             studyDetail=CT.StudyDetail(r.json())
             await studyDetail.getStudyDetail()
             st.session_state['json']=studyDetail.getStudyDetailsJson()
-            st.session_state['messages']=generate_system_prompt_gpt(st.session_state['json'])
-        else:
-            study=""
-
-        
-    #main form
-    if st.session_state['refreshChat']:
-        st.session_state['generated'] = []
-        st.session_state['past'] = []
-        st.session_state['messages'] = []
-        st.session_state['messages']=generate_system_prompt_gpt(st.session_state['json'])
+            st.session_state['messages_study_detail']=generate_system_prompt_gpt(st.session_state['json'])
         st.session_state['refreshChat']=False
 
 
     if (st.session_state['df'] is not None) or study != "": 
         st.info("Now that you have data, you can ask questions of it and GPT Companion will answer them for you", icon="ℹ️")
-        st.info(f"Study Title: {studyDetail.briefTitle} ")
-        st.info(f"Brief Summary:{studyDetail.briefSummary}")
-        if studyDetail.pubmedArticles is not None:
-            with st.expander(f"No of PubMed Articles: {len(studyDetail.pubmedArticles)}", expanded=False):
-                for article in studyDetail.pubmedArticles:
+        studyDetail=st.session_state['json']
+        st.info(f"Study Title: {studyDetail['briefTitle']} ")
+        st.info(f"Brief Summary:{studyDetail['briefSummary']}")
+        if studyDetail['pubmedArticles'] is not None:
+            with st.expander(f"No of PubMed Articles: {len(studyDetail['pubmedArticles'])}", expanded=False):
+                for article in studyDetail['pubmedArticles']:
                     st.info(f"""Article Title: {article['title']} \n\n Article PubMed ID: {article['pubmed_id']}\n\n Pub Date: {article['publication_date']}\n\nAbstract:- {article['abstract']} \n\nMethods:- {article['methods']} \n\n Results: - {article['results']} \n\n Conclusions: - {article['conclusions']} \n\n Go to Article: https://pubmed.ncbi.nlm.nih.gov/{article['pubmed_id']}/""")
                                 
             
@@ -131,8 +136,8 @@ async def main():
                     
 
                     #Append the user input
-                    st.session_state['past'].append(user_input)
-                    st.session_state['messages'].append({"role": "user", "content": user_input})
+                    st.session_state['past_study_detail'].append(user_input)
+                    st.session_state['messages_study_detail'].append({"role": "user", "content": user_input})
 
                     
                     
@@ -146,23 +151,23 @@ async def main():
                             output="Sorry I dont know the answer to that"
 
                         #Append the out from model
-                        st.session_state['generated'].append(output)
+                        st.session_state['generated_study_detail'].append(output)
                     
-                        st.session_state['messages'].append({"role": "assistant", "content": output})                #st.write(st.session_state['messages'])
+                        st.session_state['messages_study_detail'].append({"role": "assistant", "content": output})                #st.write(st.session_state['messages_study_detail'])
                         st.session_state['refreshChat']=False
 
                 # reset everything
             if clear_button:
-                st.session_state['generated'] = []
-                st.session_state['past'] = []
-                st.session_state['messages'] = []
-                st.session_state['messages']=generate_system_prompt_gpt(st.session_state['json'])
+                st.session_state['generated_study_detail'] = []
+                st.session_state['past_study_detail'] = []
+                st.session_state['messages_study_detail'] = []
+                st.session_state['messages_study_detail']=generate_system_prompt_gpt(st.session_state['json'])
 
-            if st.session_state['generated']:
+            if st.session_state['generated_study_detail']:
                 with response_container:
-                    for i in range(len(st.session_state['generated'])):
-                        message(st.session_state["past"][i], is_user=True, key=str(i) + '_user')
-                        message(st.session_state["generated"][i], key=str(i))
+                    for i in range(len(st.session_state['generated_study_detail'])):
+                        message(st.session_state["past_study_detail"][i], is_user=True, key=str(i) + '_user')
+                        message(st.session_state["generated_study_detail"][i], key=str(i))
             
 
 if __name__=="__main__":
