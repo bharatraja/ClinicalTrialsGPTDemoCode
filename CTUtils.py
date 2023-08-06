@@ -13,8 +13,33 @@ import asyncio
 import requests
 import logging
 from tenacity import retry, wait_random_exponential, stop_after_attempt 
+import json
 
+#switch page function
+def switch_page(page_name: str, query_string: str = ""):
+    from streamlit.runtime.scriptrunner import RerunData, RerunException
+    from streamlit.source_util import get_pages
 
+    def standardize_name(name: str) -> str:
+        return name.lower().replace("_", " ")
+
+    page_name = standardize_name(page_name)
+
+    pages = get_pages("streamlit_app.py")  # OR whatever your main page is called
+
+    for page_hash, config in pages.items():
+        if standardize_name(config["page_name"]) == page_name:
+            raise RerunException(
+                RerunData(
+                    query_string=query_string,
+                    page_script_hash=page_hash,
+                    page_name=page_name ,
+                )
+            )
+
+    page_names = [standardize_name(config["page_name"]) for config in pages.values()]
+
+    raise ValueError(f"Could not find page {page_name}. Must be one of {page_names}")
 
 
 #set up loggin
@@ -90,9 +115,35 @@ async def getPubmedArticles(studyID=""):
 def getQueryResultsFromCTGov(query=""):
     return requests.get(query)
 
+@st.cache_data
+def getAllPatients():
+    try:
+        return requests.get("http://127.0.0.1:8080/patients")
+    except Exception as e:
+        logAppInfo("(getAllPatients):",f"Error in getting all patients ","ERROR" , e)
+        return None
+    
+@st.cache_data
+def getPatientDetails(patientID=""):
+    try:
+        return requests.get(f"http://127.0.0.1:8080/patients/{patientID}")
+    except Exception as e:
+        logAppInfo("(getPatientDetail):",f"Error in getting patient {patientID} ","ERROR" , e)
+        return None
+    
+@st.cache_data
+def generate_system_prompt_for_match(trial_eligibility="", patient_info=""):
+    
+    #j1=json.loads(patient_info)
+    content='"You are an AI assistant that evaluates if a patient is eligibile for a given clinincal trial enrollment. Provided below is both the inclusion criteria and exclusion criteria for the trial and patient information. Using this information you recommend if the patient is a potential match for the study. If a patient meets some of the critieria you can say a potential match and recommend additional areas of investigation. Clinical Trial Eligibility Criteria: '
+    content += "\n\n" +  trial_eligibility + "\n\nPatient Information: \n\n" + json.dumps(patient_info) + '"}'
+
+    return{"role":"system","content": f"{content}"}
+
+
 # Gets response from GPT
 @retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(3))
-async def getResponseFromGPT(input=""):
+async def getResponseFromGPT(input=[""]):
     try:
         openai.api_type = "azure"
         openai.api_base = os.getenv('OPENAI_API_BASE')
