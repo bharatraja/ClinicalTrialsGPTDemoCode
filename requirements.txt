@@ -10,3 +10,5 @@ langchain
 tabulate
 pymed
 streamlit-extras
+asyncpg
+aiohttp
