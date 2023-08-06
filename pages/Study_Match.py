@@ -201,9 +201,8 @@ async def drawPatientInfo(patient_id=""):
     search_selected=st.button("Match Selected")
     if patient_id != "":
         search_selected=True
-        
     
-
+    
     #st.write(search_selected)           
 
     if search_selected:
@@ -213,7 +212,14 @@ async def drawPatientInfo(patient_id=""):
         patient_detail=(await patients.getPatientDetails(patient_id)).json()
 
         #get study info
-        url=CT.TrialsQuery(study_id=str(st.session_state['studyID'])).getStudyDetailQuery()
+        study=""
+        if st.session_state['studyID'] != "":
+            study=st.session_state['studyID']
+        else:
+            study=st.session_state['df']['Nctid'][0] 
+
+        
+        url=CT.TrialsQuery(study_id=str(study)).getStudyDetailQuery()
         r=CTU.getQueryResultsFromCTGov(url)
         if r.status_code == 200:
             studyDetail=CT.StudyDetail(r.json())
@@ -328,6 +334,7 @@ async def main():
         st.session_state['studyID']=trial_id
         st.session_state['refreshChat']=True
     patient_id=params["patientid"][0] if "patientid" in params else ""
+
     
 
     col1, col2=st.columns([3,1])
