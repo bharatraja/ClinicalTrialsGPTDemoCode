@@ -88,4 +88,4 @@ app.add_routes(routes)
 app.on_startup.append(U.create_database_pool)                
 app.on_cleanup.append(U.destroy_database_pool)
 
-web.run_app(app, port=8080)
+web.run_app(app, port=80)
