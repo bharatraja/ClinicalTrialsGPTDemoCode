@@ -118,7 +118,7 @@ def getQueryResultsFromCTGov(query=""):
 @st.cache_data
 def getAllPatients():
     try:
-        return requests.get("http://127.0.0.1:8080/patients")
+        return requests.get("https://patientsgpt.azurewebsites.net/patients")
     except Exception as e:
         logAppInfo("(getAllPatients):",f"Error in getting all patients ","ERROR" , e)
         return None
@@ -126,7 +126,7 @@ def getAllPatients():
 @st.cache_data
 def getPatientDetails(patientID=""):
     try:
-        return requests.get(f"http://127.0.0.1:8080/patients/{patientID}")
+        return requests.get(f"https://patientsgpt.azurewebsites.net/patients/{patientID}")
     except Exception as e:
         logAppInfo("(getPatientDetail):",f"Error in getting patient {patientID} ","ERROR" , e)
         return None
