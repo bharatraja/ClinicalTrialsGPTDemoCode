@@ -212,16 +212,18 @@ class Study:
                self.briefSummary=self.raw['protocolSection']['descriptionModule']['briefSummary']
                self.status=self.raw['protocolSection']['statusModule']['overallStatus']
                self.sex=self.raw['protocolSection']['eligibilityModule']['sex']
-               
+              
                try:
                    self.phases=",".join(self.raw["protocolSection"]['designModule']['phases'])
                except:
                    self.phases=""
 
-               
-               self.interventionName=self.collate( self.getValueIfExists(['armsInterventionsModule', 'interventions'],
+               try:
+                    self.interventionName=self.collate( self.getValueIfExists(['armsInterventionsModule', 'interventions'],
                                                  self.raw['protocolSection']), 'name')
-               
+               except:
+                   pass
+            
                #Truncate to only 5 locations to save on tokens
                try:
                  self.locationFacility=self.collate( self.getValueIfExists(['contactsLocationsModule', 'locations'], 
@@ -235,8 +237,11 @@ class Study:
                except Exception as e:
                 pass
            
-               self.primaryOutcomeMeasure=self.collate(self.getValueIfExists(['outcomesModule', 'primaryOutcomes'],
+               try:
+                self.primaryOutcomeMeasure=self.collate(self.getValueIfExists(['outcomesModule', 'primaryOutcomes'],
                                                                    self.raw['protocolSection']), "measure")
+               except:
+                     pass
                
                #get summary of eligibility criteria
                with st.spinner('GPT is summarizing Inclusion/Exclusion Criteria for these studies...'):
@@ -244,7 +249,6 @@ class Study:
                 #self.eligibilityCriteria=await getSummary(self.eligibilityCriteria) #Commenting this out as this does the summarization
                 #Taking a short cut to get the first 1000 characters
                 self.eligibilityCriteria=self.eligibilityCriteria[0:1000]
-                
                 
            except Exception as e:
                #You can do much better exception handling and logging here

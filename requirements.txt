@@ -9,3 +9,7 @@ geopy
 langchain
 tabulate
 pymed
+streamlit-extras
+asyncpg
+aiohttp
+asyncio

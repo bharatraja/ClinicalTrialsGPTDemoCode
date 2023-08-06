@@ -13,20 +13,18 @@ import json
 def clearOnChange():
     st.session_state['refreshChat'] = True
     
+def setStudyID():
+    st.session_state['studyID']=st.session_state['study']
+    st.session_state['refreshChat'] = True
+    st.session_state['json'] = None
+    
+
 
 def generate_system_prompt_gpt(data=""):
     return [{"role":"system","content": f"""You are an AI assistant that answers questions on Clinical trials studies information provided as json below:
                 {data}                
                 """}]
 
-
-def generate_system_prompt_for_match(trial_eligibility="", patient_info=""):
-    
-    #j1=json.loads(patient_info)
-    content='"You are an AI assistant that evaluates if a patient is eligibile for a given clinincal trial enrollment. Provided below is both the eligibility criteria for the study and patient information. Using this information you recommend if the patient is a potential match for the study. If a patient meets some of the critieria you can say a potential match and recommend additional areas of investigation. Clinical Trial Eligibility Criteria: '
-    content += "\n\n" +  trial_eligibility + "Patient Information: \n\n" + json.dumps(patient_info) + '"}'
-
-    return{"role":"system","content": f"{content}"}
 
 def resetChat():
      st.session_message['messages_study_match'] = []
@@ -64,6 +62,9 @@ def initializeSessionVariables():
         st.session_state['past_study_match'] = []
     if 'refreshChat' not in st.session_state:
         st.session_state['refreshChat'] = False
+    if 'studyID' not in st.session_state:
+        st.session_state['studyID']=""
+    
     #endregion
 
 #region drawStudyDetail
@@ -75,14 +76,12 @@ async def drawStudyDetail():
                                 list(st.session_state['df']['Nctid']),
                                    index=0,
                                    on_change=clearOnChange)
-            
-            
-            
             st.divider()
        else: 
             st.info("Enter a study id and get data", icon="ℹ️")
             study=st.text_input("Enter the Study ID (NCTID)", 
-                                    placeholder="Example: NCTID")
+                                    placeholder="Example: NCTID", value=st.session_state['studyID'], 
+                                    on_change=setStudyID, key="study")
             get_study= st.sidebar.button(label='Get Study')
 
 
@@ -91,7 +90,7 @@ async def drawStudyDetail():
     st.subheader(f"Study Detail - NCTID ({study})")
    
     #main form
-    if st.session_state['refreshChat']:
+    if (st.session_state['refreshChat'] or st.session_state['json'] is None) and study != "":
         st.session_state['generated_study_match'] = []
         st.session_state['past_study_match'] = []
         st.session_state['messages_study_match'] = []
@@ -105,11 +104,15 @@ async def drawStudyDetail():
         st.session_state['refreshChat']=False
        
 
-    if (st.session_state['df'] is not None) or study != "": 
+    if (st.session_state['json'] is not None): 
         studyDetail=st.session_state['json']
         st.info("Now that you have data, you can ask questions of it and GPT Companion will answer them for you", icon="ℹ️")
+     
         st.info(f"Study Title: {studyDetail['briefTitle']} ")
+        
         st.info(f"Brief Summary:{studyDetail['briefSummary']}")
+
+        st.info(f"Eligibility Criteria: {studyDetail['eligibilityCriteria']}")
         if studyDetail['pubmedArticles'] is not None:
             with st.expander(f"No of PubMed Articles: {len(studyDetail['pubmedArticles'])}", expanded=False):
                 for article in studyDetail['pubmedArticles']:
@@ -168,35 +171,58 @@ async def drawStudyDetail():
 
 
 #region drawPatientInfo
-async def drawPatientInfo():
+async def drawPatientInfo(patient_id=""):
 
     patients=CT.Patient()
-    j=(await patients.getAllPatients()).json()
-    j=eval(j)
-    df=pd.DataFrame.from_dict(j, orient='columns')
+    #fix the code below in case getAllPatients return None
+    try:
+        j=(await patients.getAllPatients()).json()
+        j=eval(j)
+        df=pd.DataFrame.from_dict(j, orient='columns')
+    except Exception as e:
+        CTU.logAppInfo("(drawPatientInfo)", f"Error in getting patients data data", "ERROR", e)
     
     
     st.subheader("Patient List")
+    #find the index of patient_id that matches id in the df
+    i_index=0
+    if patient_id != "":
+        i_index=df[df['id']==patient_id].index.values.astype(int)[0]
+        
     patient=st.selectbox("[id, birthdate, deathdate, martial status, race, ethnicity, gender]", 
                                 list(df['id'] + "," +  df['birthdate'] + ',' + df['deathdate'] + ',' + df['marital'] + ',' + df['race']
                                      + ", " + df['ethnicity'] + ", " + df['gender']), on_change=clearOnChange,
-                                   index=0)
+                                   index= int(i_index))
         
     # cols3,cols4=st.columns([1,2])
     # # with cols3:
     # #     search_all=st.button("Match All")
     # with cols4:
-    search_selected=st.button("Match Selected")   
+    search_selected=st.button("Match Selected")
+    if patient_id != "":
+        search_selected=True
+        
+    
 
     #st.write(search_selected)           
 
     if search_selected:
         #get patient detail
-        patient_id=patient.split(",")[0]
+        if patient_id == "":
+            patient_id=patient.split(",")[0]
         patient_detail=(await patients.getPatientDetails(patient_id)).json()
+
+        #get study info
+        url=CT.TrialsQuery(study_id=str(st.session_state['studyID'])).getStudyDetailQuery()
+        r=CTU.getQueryResultsFromCTGov(url)
+        if r.status_code == 200:
+            studyDetail=CT.StudyDetail(r.json())
+            await studyDetail.getStudyDetail()
+            st.session_state['json']=studyDetail.getStudyDetailsJson()
+
         study_info=st.session_state['json']['eligibilityCriteria']
-       
-        gpt_prompt_for_match=generate_system_prompt_for_match(study_info, patient_detail)
+        
+        gpt_prompt_for_match=CTU.generate_system_prompt_for_match(study_info, patient_detail)
                
         #Call GPT to match the patient
         #Append the user input
@@ -224,11 +250,11 @@ async def drawPatientInfo():
         st.session_state['generated_study_match'].append(output)
         st.session_state['messages_study_match'].append({"role": "assistant", "content": output})                #st.write(st.session_state['messages_study_match'])
         st.session_state['refreshChat']=False
-        
+
          
 
     #region PatientDetail    
-    if patient != "":
+    if patient != "" :
         selected_patient=patient.split(",")[0]
         #get the patient detail
         patient_detail=(await patients.getPatientDetails(selected_patient))
@@ -294,13 +320,21 @@ async def main():
 
 
     initializeSessionVariables()
+
+    #if there are query params we get it and set it
+    params = st.experimental_get_query_params()
+    trial_id=params["studyid"][0] if "studyid" in params else ""
+    if trial_id != "":
+        st.session_state['studyID']=trial_id
+        st.session_state['refreshChat']=True
+    patient_id=params["patientid"][0] if "patientid" in params else ""
     
+
     col1, col2=st.columns([3,1])
+   
     with col2:
-        await drawPatientInfo()   
+        await drawPatientInfo(patient_id)  
     with col1:
         await drawStudyDetail()
-          
-
 if __name__=="__main__":
     asyncio.run(main())
