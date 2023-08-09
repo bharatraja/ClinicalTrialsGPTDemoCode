@@ -503,7 +503,7 @@ class Patient():
     async def getAllPatients(self):
         r=CTU.getAllPatients()
         return r
-        
+    
     async def getPatientDetails(self, id):
         r=CTU.getPatientDetails(id)
         return r

@@ -12,6 +12,8 @@ import json
 
 def clearOnChange():
     st.session_state['refreshChat'] = True
+    st.session_state['patientID']=st.session_state.patient.split(",")[0]
+    
     
 def setStudyID():
     st.session_state['studyID']=st.session_state['study']
@@ -64,6 +66,8 @@ def initializeSessionVariables():
         st.session_state['refreshChat'] = False
     if 'studyID' not in st.session_state:
         st.session_state['studyID']=""
+    if 'patientID' not in st.session_state:
+        st.session_state['patientID']=""
     
     #endregion
 
@@ -186,12 +190,12 @@ async def drawPatientInfo(patient_id=""):
     st.subheader("Patient List")
     #find the index of patient_id that matches id in the df
     i_index=0
-    if patient_id != "":
-        i_index=df[df['id']==patient_id].index.values.astype(int)[0]
+    if st.session_state['patientID'] != "":
+        i_index=df[df['id']==st.session_state["patientID"]].index.values.astype(int)[0]
         
     patient=st.selectbox("[id, birthdate, deathdate, martial status, race, ethnicity, gender]", 
                                 list(df['id'] + "," +  df['birthdate'] + ',' + df['deathdate'] + ',' + df['marital'] + ',' + df['race']
-                                     + ", " + df['ethnicity'] + ", " + df['gender']), on_change=clearOnChange,
+                                     + ", " + df['ethnicity'] + ", " + df['gender']), on_change=clearOnChange, key='patient',
                                    index= int(i_index))
         
     # cols3,cols4=st.columns([1,2])
@@ -201,10 +205,6 @@ async def drawPatientInfo(patient_id=""):
     search_selected=st.button("Match Selected")
     if patient_id != "":
         search_selected=True
-    
-    
-    #st.write(search_selected)           
-
     if search_selected:
         #get patient detail
         if patient_id == "":
@@ -218,7 +218,6 @@ async def drawPatientInfo(patient_id=""):
         else:
             study=st.session_state['df']['Nctid'][0] 
 
-        
         url=CT.TrialsQuery(study_id=str(study)).getStudyDetailQuery()
         r=CTU.getQueryResultsFromCTGov(url)
         if r.status_code == 200:
@@ -238,11 +237,11 @@ async def drawPatientInfo(patient_id=""):
         
         st.session_state['past_study_match'].append(f"Generting Patient Match for patient id : {patient_id}")
         st.session_state['messages_study_match'].append(gpt_prompt_for_match)
-        st.session_state['messages_study_match'].append({"role": "user", "content": "is the user a match?"})
+        st.session_state['messages_study_match'].append({"role": "user", "content": "Is this patient a match for the study?"})
         #st.write(type(st.session_state['messages_study_match']))
         #st.write(st.session_state['messages_study_match'])
                     
-                    
+        
         with st.spinner('GPT Getting answers for you...'):
             try: 
                 output=await CTU.getResponseFromGPT(st.session_state['messages_study_match'])
@@ -334,14 +333,16 @@ async def main():
         st.session_state['studyID']=trial_id
         st.session_state['refreshChat']=True
     patient_id=params["patientid"][0] if "patientid" in params else ""
+    if patient_id != "":
+        st.session_state['patientID']=patient_id
 
     
 
     col1, col2=st.columns([3,1])
-   
     with col2:
-        await drawPatientInfo(patient_id)  
+        await drawPatientInfo(patient_id)
     with col1:
         await drawStudyDetail()
+    
 if __name__=="__main__":
     asyncio.run(main())
