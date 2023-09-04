@@ -24,7 +24,7 @@ async def create_database_pool(app: Application):
     db_pool_max_size = os.environ.get('SYNTHEA_DB_POOL_MAX_SIZE')
     db_database=os.environ.get('SYNTHEA_DB_NAME')
 
-    print(db_password,db_user,db_host,db_port,db_pool_min_size,db_pool_max_size,db_database)
+ 
 
     pool: Pool = await asyncpg.create_pool(host=db_host,
                                            port=int(db_port),

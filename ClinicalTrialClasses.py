@@ -83,8 +83,9 @@ class TrialsQuery:
     other=""
     study_id="" #to get a study detail
 
+  
     #region api endpoints
-    api_base="https://beta.clinicaltrials.gov/api/v2"
+    api_base=os.getenv("CT_GOV_API_BASE") #"https://beta.clinicaltrials.gov/api/v2"
     api_key="" 
     api_studies="/studies"
     api_studies_detail="/studies/"

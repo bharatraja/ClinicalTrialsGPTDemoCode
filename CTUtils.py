@@ -117,16 +117,18 @@ def getQueryResultsFromCTGov(query=""):
 
 @st.cache_data
 def getAllPatients():
+    patientDBUrl=os.getenv("PATIENT_DB_URL")
     try:
-        return requests.get("https://patientsgpt.azurewebsites.net/patients")
+        return requests.get(patientDBUrl) # type: ignore
     except Exception as e:
         logAppInfo("(getAllPatients):",f"Error in getting all patients ","ERROR" , e)
         return None
     
 @st.cache_data
 def getPatientDetails(patientID=""):
+    patientDBUrl=os.getenv("PATIENT_DB_URL")
     try:
-        return requests.get(f"https://patientsgpt.azurewebsites.net/patients/{patientID}")
+        return requests.get(f"{patientDBUrl}/{patientID}")
     except Exception as e:
         logAppInfo("(getPatientDetail):",f"Error in getting patient {patientID} ","ERROR" , e)
         return None
