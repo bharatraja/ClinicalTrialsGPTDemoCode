@@ -22,17 +22,17 @@ OPENAI_API_TYPE='azure'<br>
 OPENAI_API_VERSION='2023-03-15-preview'<br>
 OPENAI_API_CHAT_COMPLETION='your azure chat deployment name'<br>
 GPT_DEMO_MAX_RECORDS_TO_RETURN=5<br>
-CT_GOV_API_BASE='https://beta.clinicaltrials.gov/api/v2'
-PATIENT_DB_URL='url of the web app endpoint for your patient api'
+CT_GOV_API_BASE='https://beta.clinicaltrials.gov/api/v2'<br>
+PATIENT_DB_URL='url of the web app endpoint for your patient api'<br>
 
 For the Patients DB Web App you need the following environmental variables
-SYNTHEA_DB_HOST='location of your postreg db'
-SYNTHEA_DB_NAME='name of your database'
-SYNTHEA_DB_PASSWORD='db password'
-SYNTHEA_DB_POOL_MAX_SIZE=6
-SYNTHEA_DB_POOL_MIN_SIZE=6
-SYNTHEA_DB_PORT=5432
-SYNTHEA_DB_USER='db user name'
+SYNTHEA_DB_HOST='location of your postreg db'<br>
+SYNTHEA_DB_NAME='name of your database'<br>
+SYNTHEA_DB_PASSWORD='db password'<br>
+SYNTHEA_DB_POOL_MAX_SIZE=6<br>
+SYNTHEA_DB_POOL_MIN_SIZE=6<br>
+SYNTHEA_DB_PORT=5432<br>
+SYNTHEA_DB_USER='db user name'<br>
 
 # Start up commands
 To start your web app in Azure Web App do the following
